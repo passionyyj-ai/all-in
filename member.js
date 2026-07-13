@@ -48,14 +48,14 @@ async function loadMemberDashboard(){
     ['현재 잔액',won(cash.balance||0)],
     ['당월 수입',won(cash.income||0)],
     ['당월 지출',won(cash.expense||0)],
-    ['게임비 미납',won(dues.unpaid_amount||0)]
+    ['게임비 잔액',won(dues.unpaid_amount||0)]
   ].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
   $('feeDashboard').innerHTML=`<div class="grid g4">
     <div class="kpi"><div class="label">대상 회원</div><div class="value">${fee.total||0}명</div></div>
     <div class="kpi"><div class="label">납부</div><div class="value">${fee.paid||0}명</div></div>
-    <div class="kpi"><div class="label">미납</div><div class="value">${fee.unpaid||0}명</div></div>
+    <div class="kpi"><div class="label">게임비 잔액</div><div class="value">${fee.unpaid||0}명</div></div>
     <div class="kpi"><div class="label">납부율</div><div class="value">${fee.rate||0}%</div></div>
-  </div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>회원</th><th>상태</th><th>납부일</th></tr></thead><tbody>${(fee.members||[]).map(x=>`<tr><td><b>${x.name}</b></td><td>${x.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>'}</td><td>${x.paid_date||'-'}</td></tr>`).join('')}</tbody></table></div>`;
+  </div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>회원</th><th>상태</th><th>납부일</th></tr></thead><tbody>${(fee.members||[]).map(x=>`<tr><td><b>${x.name}</b></td><td>${x.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">게임비 잔액</span>'}</td><td>${x.paid_date||'-'}</td></tr>`).join('')}</tbody></table></div>`;
   $('cashDashboard').innerHTML=`<div class="grid g4">
     <div class="kpi"><div class="label">당월 수입</div><div class="value">${won(cash.income||0)}</div></div>
     <div class="kpi"><div class="label">당월 지출</div><div class="value">${won(cash.expense||0)}</div></div>
@@ -65,7 +65,7 @@ async function loadMemberDashboard(){
   $('gameDueDashboard').innerHTML=`<div class="grid g4">
     <div class="kpi"><div class="label">총 청구</div><div class="value">${won(dues.total_amount||0)}</div></div>
     <div class="kpi"><div class="label">납부</div><div class="value">${won(dues.paid_amount||0)}</div></div>
-    <div class="kpi"><div class="label">미납</div><div class="value">${won(dues.unpaid_amount||0)}</div></div>
-    <div class="kpi"><div class="label">미납 건수</div><div class="value">${dues.unpaid_count||0}건</div></div>
-  </div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>회원</th><th>총 청구</th><th>납부</th><th>미납</th></tr></thead><tbody>${(dues.items||[]).map(x=>`<tr><td><b>${x.name}</b></td><td>${won(x.total_amount)}</td><td class="money-in">${won(x.paid_amount)}</td><td class="${x.unpaid_amount>0?'money-out':''}">${won(x.unpaid_amount)}</td></tr>`).join('')}</tbody></table></div>`;
+    <div class="kpi"><div class="label">게임비 잔액</div><div class="value">${won(dues.unpaid_amount||0)}</div></div>
+    <div class="kpi"><div class="label">게임 횟수</div><div class="value">${dues.unpaid_count||0}건</div></div>
+  </div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>회원</th><th>총 청구</th><th>납부</th><th>게임비 잔액</th></tr></thead><tbody>${(dues.items||[]).map(x=>`<tr><td><b>${x.name}</b></td><td>${won(x.total_amount)}</td><td class="money-in">${won(x.paid_amount)}</td><td class="${x.unpaid_amount>0?'money-out':''}">${won(x.unpaid_amount)}</td></tr>`).join('')}</tbody></table></div>`;
 }

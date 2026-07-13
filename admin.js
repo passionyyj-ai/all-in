@@ -103,7 +103,7 @@ function renderFees(){
     }else{
       action=`<button class="btn green small" onclick="openFeePayment('${m.id}','${month}')">납부</button>`;
     }
-    return `<tr><td><b>${m.name}</b></td><td>${badge(m.position)}</td><td>${won(settings.monthly_fee)}</td><td>${f?.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>'}</td><td>${paidInfo}</td><td>${action}</td></tr>`;
+    return `<tr><td><b>${m.name}</b></td><td>${badge(m.position)}</td><td>${won(settings.monthly_fee)}</td><td>${f?.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">게임비 잔액</span>'}</td><td>${paidInfo}</td><td>${action}</td></tr>`;
   }).join('');
 }
 function openFeePayment(memberId,month,paymentId=''){
@@ -274,7 +274,7 @@ function renderGames(){
   const dues=gameDues.filter(d=>d.meeting_id===m.id),paid=dues.filter(d=>d.status==='paid'),unpaid=dues.filter(d=>d.status==='unpaid');
   $('gameFeeSummary').innerHTML=dues.length?`<div class="grid g4">
     <div class="kpi"><div class="label">총 청구</div><div class="value">${won(dues.reduce((s,d)=>s+Number(d.amount),0))}</div></div>
-    <div class="kpi"><div class="label">미납</div><div class="value">${won(unpaid.reduce((s,d)=>s+Number(d.amount),0))}</div></div>
+    <div class="kpi"><div class="label">게임비 잔액</div><div class="value">${won(unpaid.reduce((s,d)=>s+Number(d.amount),0))}</div></div>
     <div class="kpi"><div class="label">납부</div><div class="value">${won(paid.reduce((s,d)=>s+Number(d.amount),0))}</div></div>
     <div class="kpi"><div class="label">청구 건수</div><div class="value">${dues.length}건</div></div>
   </div>`:'<div class="empty">점수를 저장하면 일반 패배는 2,000원, 8점 차 이상 콜드게임 패배는 4,000원 청구가 생성됩니다. 실제 입금 전에는 수입에 반영되지 않습니다.</div>';
@@ -431,10 +431,10 @@ function renderReceivables(){
     const unpaidTotal=people.reduce((s,x)=>s+x.unpaid,0);
     return `<div class="card" style="margin-bottom:12px">
       <div class="row" style="justify-content:space-between">
-        <div><b>${g.date} 모임</b><div style="font-size:12px;color:#6b7280;margin-top:3px">미수 ${won(unpaidTotal)}</div></div>
+        <div><b>${g.date} 모임</b><div style="font-size:12px;color:#6b7280;margin-top:3px">게임비 ${won(unpaidTotal)}</div></div>
         <button class="btn blue small" onclick="shareMeetingGameDues('${g.date}')">공유</button>
       </div>
-      <div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>회원</th><th>청구</th><th>납부</th><th>미납</th></tr></thead><tbody>
+      <div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>회원</th><th>청구</th><th>납부</th><th>게임비 잔액</th></tr></thead><tbody>
       ${people.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr><td><b>${x.name}</b></td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td><td class="${x.unpaid>0?'money-out':''}"><b>${won(x.unpaid)}</b></td></tr>`).join('')||'<tr><td colspan="4" class="empty">내역 없음</td></tr>'}
       </tbody></table></div>
     </div>`;
@@ -454,7 +454,7 @@ function renderReceivables(){
   if(status==='unpaid')rows=rows.filter(x=>x.unpaid>0);
   if(status==='paid')rows=rows.filter(x=>x.paid>0);
   const total=rows.reduce((s,x)=>s+x.total,0),unpaid=rows.reduce((s,x)=>s+x.unpaid,0),paid=rows.reduce((s,x)=>s+x.paid,0);
-  $('receivableKpis').innerHTML=[['청구액',won(total)],['미납액',won(unpaid)],['납부액',won(paid)],['미납 건수',rows.reduce((s,x)=>s+x.unpaidCount,0)+'건']].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+  $('receivableKpis').innerHTML=[['청구액',won(total)],['게임비 잔액',won(unpaid)],['납부액',won(paid)],['게임 횟수',rows.reduce((s,x)=>s+x.unpaidCount,0)+'건']].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
   $('duesBody').innerHTML=rows.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr>
     <td><b>${x.name}</b></td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td>
     <td class="${x.unpaid>0?'money-out':''}"><b>${won(x.unpaid)}</b></td><td>${x.unpaidCount}건</td>
@@ -465,8 +465,8 @@ async function markMemberDuesPaid(memberId,month){
   const rows=gameDues.filter(d=>d.member_id===memberId&&d.status==='unpaid'&&monthKey(d.due_date)===month);
   const member=members.find(x=>x.id===memberId);
   const amount=rows.reduce((s,d)=>s+Number(d.amount),0);
-  if(!rows.length)return toast('미납 게임비가 없습니다.');
-  if(!confirm(`${member?.name||'회원'}의 미납 게임비 합계 ${won(amount)} 입금을 확인했나요?
+  if(!rows.length)return toast('납부할 게임비가 없습니다.');
+  if(!confirm(`${member?.name||'회원'}의 게임비 합계 ${won(amount)} 입금을 확인했나요?
 확인 시 수입 내역 1건으로 합산 반영됩니다.`))return;
   const {error}=await sb.rpc('admin_mark_member_game_dues_paid',{p_member_id:memberId,p_month:month+'-01',p_paid_date:today()});
   if(error)return toast(error.message);
@@ -523,17 +523,29 @@ async function executeReset(){
 
 function currentDuesMonth(){return $('duesMonth')?.value||new Date().toISOString().slice(0,7)}
 function unpaidRowsForMonth(){const month=currentDuesMonth();return gameDues.filter(d=>monthKey(d.due_date)===month&&d.status==='unpaid')}
-function buildAllDuesShareText(rows=unpaidRowsForMonth(),title='게임비 납부 안내'){
-  const grouped={};
+function buildAllDuesShareText(rows=unpaidRowsForMonth(),title='게임비 안내'){
+  const byDate={};
   rows.forEach(d=>{
+    const date=d.due_date;
     const m=members.find(x=>x.id===d.member_id);
     const name=m?.name||'-';
-    if(!grouped[name])grouped[name]=0;
-    grouped[name]+=Number(d.amount);
+    if(!byDate[date])byDate[date]={};
+    if(!byDate[date][name])byDate[date][name]=0;
+    byDate[date][name]+=Number(d.amount);
   });
-  const people=Object.entries(grouped).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko'));
-  const total=people.reduce((s,x)=>s+x[1],0);
-  return `⚽ 올인 족구단 ${title}\n${currentDuesMonth().replace('-','년 ')}월\n\n${people.map(([name,amount])=>`• ${name} : ${won(amount)}`).join('\n')}\n\n총 미납금액 : ${won(total)}\n입금 완료 후 총무에게 알려주세요.`;
+
+  const sections=Object.entries(byDate)
+    .sort((a,b)=>a[0].localeCompare(b[0]))
+    .map(([date,people])=>{
+      const lines=Object.entries(people)
+        .sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko'))
+        .map(([name,amount])=>`• ${name} : ${won(amount)}`)
+        .join('\n');
+      return `📅 ${date} 모임\n${lines}`;
+    });
+
+  const total=rows.reduce((s,d)=>s+Number(d.amount),0);
+  return `⚽ 올인 족구단 ${title}\n\n${sections.join('\n\n')}\n\n총 게임비 : ${won(total)}\n입금 완료 후 총무에게 알려주세요.`;
 }
 function buildMemberDuesShareText(memberId){
   const month=currentDuesMonth();
@@ -542,7 +554,7 @@ function buildMemberDuesShareText(memberId){
   const byDate={};
   rows.forEach(d=>{byDate[d.due_date]=(byDate[d.due_date]||0)+Number(d.amount)});
   const total=rows.reduce((s,d)=>s+Number(d.amount),0);
-  return `⚽ 올인 족구단 게임비 안내\n${m?.name||'회원'}님\n\n${Object.entries(byDate).sort().map(([date,amount])=>`• ${date} : ${won(amount)}`).join('\n')}\n\n입금하실 게임비 합계 : ${won(total)}\n입금 완료 후 총무에게 알려주세요.`;
+  return `⚽ 올인 족구단 게임비 안내\n${m?.name||'회원'}님\n\n${Object.entries(byDate).sort().map(([date,amount])=>`📅 ${date} 모임 : ${won(amount)}`).join('\n')}\n\n입금하실 게임비 합계 : ${won(total)}\n입금 완료 후 총무에게 알려주세요.`;
 }
 async function shareText(text,title='올인 족구단 게임비'){
   if(navigator.share){
@@ -551,15 +563,15 @@ async function shareText(text,title='올인 족구단 게임비'){
   await navigator.clipboard.writeText(text);
   toast('공유문구를 복사했습니다. 카카오톡 단톡방에 붙여넣으세요.');
 }
-function shareAllGameDues(){const rows=unpaidRowsForMonth();if(!rows.length)return toast('공유할 미납 내역이 없습니다.');shareText(buildAllDuesShareText(rows))}
+function shareAllGameDues(){const rows=unpaidRowsForMonth();if(!rows.length)return toast('공유할 게임비 내역이 없습니다.');shareText(buildAllDuesShareText(rows))}
 async function copyAllGameDues(){
-  const rows=unpaidRowsForMonth();if(!rows.length)return toast('복사할 미납 내역이 없습니다.');
-  await navigator.clipboard.writeText(buildAllDuesShareText(rows));toast('미납 안내 문구 복사 완료');
+  const rows=unpaidRowsForMonth();if(!rows.length)return toast('복사할 게임비 내역이 없습니다.');
+  await navigator.clipboard.writeText(buildAllDuesShareText(rows));toast('게임비 안내 문구 복사 완료');
 }
 function shareMeetingGameDues(date){
   const rows=unpaidRowsForMonth().filter(d=>d.due_date===date);
-  if(!rows.length)return toast('해당 모임일의 미납 내역이 없습니다.');
-  shareText(buildAllDuesShareText(rows,`${date} 모임 게임비 안내`));
+  if(!rows.length)return toast('해당 모임일의 게임비 내역이 없습니다.');
+  shareText(buildAllDuesShareText(rows,'게임비 안내'));
 }
 function shareMemberGameDues(memberId){
   const text=buildMemberDuesShareText(memberId);

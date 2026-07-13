@@ -195,7 +195,7 @@ function renderGames(){
     <div class="kpi"><div class="label">미납</div><div class="value">${won(unpaid.reduce((s,d)=>s+Number(d.amount),0))}</div></div>
     <div class="kpi"><div class="label">납부</div><div class="value">${won(paid.reduce((s,d)=>s+Number(d.amount),0))}</div></div>
     <div class="kpi"><div class="label">청구 건수</div><div class="value">${dues.length}건</div></div>
-  </div>`:'<div class="empty">점수를 저장하면 패배 팀원별 2,000원 게임비 청구가 생성됩니다. 수입에는 반영되지 않습니다.</div>';
+  </div>`:'<div class="empty">점수를 저장하면 일반 패배는 2,000원, 8점 차 이상 콜드게임 패배는 4,000원 청구가 생성됩니다. 실제 입금 전에는 수입에 반영되지 않습니다.</div>';
 }
 init();
 
@@ -235,19 +235,36 @@ function renderReceivables(){
   if(!$('duesBody'))return;
   if(!$('duesMonth').value)$('duesMonth').value=new Date().toISOString().slice(0,7);
   const status=$('duesStatusFilter').value,month=$('duesMonth').value;
-  const rows=gameDues.filter(d=>(!status||d.status===status)&&monthKey(d.due_date)===month);
-  const total=rows.reduce((s,d)=>s+Number(d.amount),0),unpaid=rows.filter(d=>d.status==='unpaid').reduce((s,d)=>s+Number(d.amount),0),paid=rows.filter(d=>d.status==='paid').reduce((s,d)=>s+Number(d.amount),0);
-  $('receivableKpis').innerHTML=[['청구액',won(total)],['미납액',won(unpaid)],['납부액',won(paid)],['미납 건수',rows.filter(d=>d.status==='unpaid').length+'건']].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
-  $('duesBody').innerHTML=rows.map(d=>{const m=members.find(x=>x.id===d.member_id),g=games.find(x=>x.id===d.game_id);return`<tr><td>${d.due_date}</td><td><b>${m?.name||'-'}</b></td><td>${g?teamName(g.team_a)+' vs '+teamName(g.team_b):'-'}</td><td>${won(d.amount)}</td><td>${d.status==='paid'?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>'}</td><td>${d.paid_date||'-'}</td><td>${d.status==='unpaid'?`<button class="btn green small" onclick="markDuePaid('${d.id}')">입금확인</button>`:`<button class="btn small" onclick="cancelDuePaid('${d.id}')">입금취소</button>`}</td></tr>`}).join('')||'<tr><td colspan="7" class="empty">내역 없음</td></tr>';
+  const monthRows=gameDues.filter(d=>monthKey(d.due_date)===month);
+  const grouped={};
+  monthRows.forEach(d=>{
+    const m=members.find(x=>x.id===d.member_id);
+    if(!grouped[d.member_id])grouped[d.member_id]={memberId:d.member_id,name:m?.name||'-',total:0,paid:0,unpaid:0,unpaidCount:0};
+    const g=grouped[d.member_id];
+    g.total+=Number(d.amount);
+    if(d.status==='paid')g.paid+=Number(d.amount);
+    else{g.unpaid+=Number(d.amount);g.unpaidCount++}
+  });
+  let rows=Object.values(grouped);
+  if(status==='unpaid')rows=rows.filter(x=>x.unpaid>0);
+  if(status==='paid')rows=rows.filter(x=>x.paid>0);
+  const total=rows.reduce((s,x)=>s+x.total,0),unpaid=rows.reduce((s,x)=>s+x.unpaid,0),paid=rows.reduce((s,x)=>s+x.paid,0);
+  $('receivableKpis').innerHTML=[['청구액',won(total)],['미납액',won(unpaid)],['납부액',won(paid)],['미납 건수',rows.reduce((s,x)=>s+x.unpaidCount,0)+'건']].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+  $('duesBody').innerHTML=rows.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr>
+    <td><b>${x.name}</b></td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td>
+    <td class="${x.unpaid>0?'money-out':''}"><b>${won(x.unpaid)}</b></td><td>${x.unpaidCount}건</td>
+    <td>${x.unpaid>0?`<button class="btn green small" onclick="markMemberDuesPaid('${x.memberId}','${month}')">합계 입금확인</button>`:'<span class="badge" style="background:#dcfce7;color:#166534">완납</span>'}</td>
+  </tr>`).join('')||'<tr><td colspan="6" class="empty">내역 없음</td></tr>';
 }
-async function markDuePaid(id){
-  const d=gameDues.find(x=>x.id===id),m=members.find(x=>x.id===d?.member_id);
-  if(!d||!confirm(`${m?.name||'회원'}의 게임비 ${won(d.amount)} 입금을 확인했나요?\n확인 시점에 수입 내역으로 반영됩니다.`))return;
-  const {error}=await sb.rpc('admin_mark_game_due_paid',{p_due_id:id,p_paid_date:today()});if(error)return toast(error.message);
-  toast('입금 확인 / 수입 반영 완료');await loadAll()
-}
-async function cancelDuePaid(id){
-  if(!confirm('입금 처리를 취소할까요? 연결된 수입 내역도 삭제됩니다.'))return;
-  const {error}=await sb.rpc('admin_cancel_game_due_paid',{p_due_id:id});if(error)return toast(error.message);
-  toast('입금 처리 취소');await loadAll()
+async function markMemberDuesPaid(memberId,month){
+  const rows=gameDues.filter(d=>d.member_id===memberId&&d.status==='unpaid'&&monthKey(d.due_date)===month);
+  const member=members.find(x=>x.id===memberId);
+  const amount=rows.reduce((s,d)=>s+Number(d.amount),0);
+  if(!rows.length)return toast('미납 게임비가 없습니다.');
+  if(!confirm(`${member?.name||'회원'}의 미납 게임비 합계 ${won(amount)} 입금을 확인했나요?
+확인 시 수입 내역 1건으로 합산 반영됩니다.`))return;
+  const {error}=await sb.rpc('admin_mark_member_game_dues_paid',{p_member_id:memberId,p_month:month+'-01',p_paid_date:today()});
+  if(error)return toast(error.message);
+  toast('게임비 합계 입금 확인 / 수입 반영 완료');
+  await loadAll()
 }

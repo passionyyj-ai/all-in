@@ -38,14 +38,14 @@
 <section id="games" class="view"><div class="title"><h2>경기 결과 · 게임비 청구</h2><button class="btn dark small" onclick="addGame()">+ 경기 추가</button></div><div class="card"><div class="toolbar"><select id="gameMeetingSelect" onchange="renderGames()"></select></div><div id="gameList"></div></div><div class="title"><h2>게임비 청구 현황</h2><span>패배 팀원 1인당 2,000원 · 수입 자동반영 안 함</span></div><div class="card" id="gameFeeSummary"></div></section>
 
 <section id="receivables" class="view">
-<div class="title"><h2>게임비 미수금 · 납부 관리</h2><span>실제 입금 확인 후 수입 반영</span></div>
+<div class="title"><h2>게임비 미수금 · 납부 관리</h2><span>일반 패배 2,000원 · 8점차 콜드게임 4,000원</span></div>
 <div id="receivableKpis" class="grid g4"></div>
 <div class="card" style="margin-top:12px">
   <div class="toolbar">
     <select id="duesStatusFilter" onchange="renderReceivables()"><option value="">전체</option><option value="unpaid">미납</option><option value="paid">납부</option></select>
     <input type="month" id="duesMonth" onchange="renderReceivables()">
   </div>
-  <div class="table-wrap"><table><thead><tr><th>발생일</th><th>회원</th><th>경기</th><th>청구액</th><th>상태</th><th>입금일</th><th>관리</th></tr></thead><tbody id="duesBody"></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>회원</th><th>총 청구액</th><th>납부액</th><th>미납액</th><th>미납 건수</th><th>관리</th></tr></thead><tbody id="duesBody"></tbody></table></div>
 </div>
 </section>
 </main>

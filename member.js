@@ -67,5 +67,5 @@ async function loadMemberDashboard(){
     <div class="kpi"><div class="label">납부</div><div class="value">${won(dues.paid_amount||0)}</div></div>
     <div class="kpi"><div class="label">미납</div><div class="value">${won(dues.unpaid_amount||0)}</div></div>
     <div class="kpi"><div class="label">미납 건수</div><div class="value">${dues.unpaid_count||0}건</div></div>
-  </div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>발생일</th><th>회원</th><th>금액</th><th>상태</th></tr></thead><tbody>${(dues.items||[]).map(x=>`<tr><td>${x.due_date}</td><td><b>${x.name}</b></td><td>${won(x.amount)}</td><td>${x.status==='paid'?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+  </div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>회원</th><th>총 청구</th><th>납부</th><th>미납</th></tr></thead><tbody>${(dues.items||[]).map(x=>`<tr><td><b>${x.name}</b></td><td>${won(x.total_amount)}</td><td class="money-in">${won(x.paid_amount)}</td><td class="${x.unpaid_amount>0?'money-out':''}">${won(x.unpaid_amount)}</td></tr>`).join('')}</tbody></table></div>`;
 }

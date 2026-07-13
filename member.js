@@ -4,7 +4,7 @@ function showMemberApp(){$('memberLoginView').classList.add('hidden');$('memberA
 async function init(){if(sessionStorage.getItem('allin_auth_member')==='ok'){showMemberApp();await initPortal()}}
 async function initPortal(){
   if(!requireConfig()){$('configWarn').classList.remove('hidden');$('meetingDate').textContent='연결 설정 필요';return}
-  await loadPortal();
+  await loadPortal(); if(!$('memberDashMonth').value)$('memberDashMonth').value=new Date().toISOString().slice(0,7); await loadMemberDashboard();
   sb.channel('member-portal').on('postgres_changes',{event:'*',schema:'public',table:'attendance'},()=>loadPortal(true)).on('postgres_changes',{event:'*',schema:'public',table:'meetings'},()=>loadPortal(true)).subscribe();
 }
 async function loadPortal(silent=false){
@@ -19,7 +19,7 @@ async function loadPortal(silent=false){
 function renderMembers(){
   const q=$('memberSearch').value.trim();
   const rows=members.filter(m=>!q||m.name.includes(q));
-  $('memberList').innerHTML=rows.length?rows.map(m=>`<button class="member-pick ${selected?.id===m.id?'selected':''}" onclick="pickMember('${m.id}')"><b>${m.name}</b>${((m.positions&&m.positions.length)?m.positions:[m.position]).map(p=>badge(p)).join('')}</button>`).join(''):'<div class="empty">검색 결과가 없습니다.</div>';
+  $('memberList').innerHTML=rows.length?rows.map(m=>`<button class="member-pick ${selected?.id===m.id?'selected':''}" onclick="pickMember('${m.id}')"><b>${m.name}</b>${badge(m.position)}</button>`).join(''):'<div class="empty">검색 결과가 없습니다.</div>';
 }
 function pickMember(id){selected=members.find(m=>m.id===id);$('pin').value='';renderMembers();renderStatus();$('checkPanel').classList.remove('hidden')}
 function renderStatus(){
@@ -37,3 +37,35 @@ async function setAttendance(attending){
 }
 $('memberSearch').addEventListener('input',renderMembers);
 init();
+
+async function loadMemberDashboard(){
+  if(!sb||!$('memberDashMonth'))return;
+  const month=$('memberDashMonth').value||new Date().toISOString().slice(0,7);
+  const {data,error}=await sb.rpc('get_member_dashboard',{p_month:month+'-01'});
+  if(error){console.error(error);return toast('대시보드 조회 중 오류가 발생했습니다.')}
+  const d=data||{}, fee=d.fee||{}, cash=d.cash||{}, dues=d.game_dues||{};
+  $('memberDashboardKpis').innerHTML=[
+    ['현재 잔액',won(cash.balance||0)],
+    ['당월 수입',won(cash.income||0)],
+    ['당월 지출',won(cash.expense||0)],
+    ['게임비 미납',won(dues.unpaid_amount||0)]
+  ].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+  $('feeDashboard').innerHTML=`<div class="grid g4">
+    <div class="kpi"><div class="label">대상 회원</div><div class="value">${fee.total||0}명</div></div>
+    <div class="kpi"><div class="label">납부</div><div class="value">${fee.paid||0}명</div></div>
+    <div class="kpi"><div class="label">미납</div><div class="value">${fee.unpaid||0}명</div></div>
+    <div class="kpi"><div class="label">납부율</div><div class="value">${fee.rate||0}%</div></div>
+  </div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>회원</th><th>상태</th><th>납부일</th></tr></thead><tbody>${(fee.members||[]).map(x=>`<tr><td><b>${x.name}</b></td><td>${x.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>'}</td><td>${x.paid_date||'-'}</td></tr>`).join('')}</tbody></table></div>`;
+  $('cashDashboard').innerHTML=`<div class="grid g4">
+    <div class="kpi"><div class="label">당월 수입</div><div class="value">${won(cash.income||0)}</div></div>
+    <div class="kpi"><div class="label">당월 지출</div><div class="value">${won(cash.expense||0)}</div></div>
+    <div class="kpi"><div class="label">당월 증감</div><div class="value">${won((cash.income||0)-(cash.expense||0))}</div></div>
+    <div class="kpi"><div class="label">현재 잔액</div><div class="value">${won(cash.balance||0)}</div></div>
+  </div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>일자</th><th>구분</th><th>항목</th><th>금액</th></tr></thead><tbody>${(cash.recent||[]).map(x=>`<tr><td>${x.date}</td><td>${x.type==='income'?'수입':'지출'}</td><td>${x.category}</td><td class="${x.type==='income'?'money-in':'money-out'}">${x.type==='income'?'+':'-'} ${won(x.amount)}</td></tr>`).join('')}</tbody></table></div>`;
+  $('gameDueDashboard').innerHTML=`<div class="grid g4">
+    <div class="kpi"><div class="label">총 청구</div><div class="value">${won(dues.total_amount||0)}</div></div>
+    <div class="kpi"><div class="label">납부</div><div class="value">${won(dues.paid_amount||0)}</div></div>
+    <div class="kpi"><div class="label">미납</div><div class="value">${won(dues.unpaid_amount||0)}</div></div>
+    <div class="kpi"><div class="label">미납 건수</div><div class="value">${dues.unpaid_count||0}건</div></div>
+  </div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>발생일</th><th>회원</th><th>금액</th><th>상태</th></tr></thead><tbody>${(dues.items||[]).map(x=>`<tr><td>${x.due_date}</td><td><b>${x.name}</b></td><td>${won(x.amount)}</td><td>${x.status==='paid'?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+}

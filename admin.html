@@ -9,11 +9,16 @@
 <main>
 <section id="dashboard" class="view active"><div id="kpis" class="grid g4"></div><div class="title"><h2>다가오는 일요일</h2><span id="nextMeetingDate"></span></div><div class="grid g2"><div class="card" id="meetingSummary"></div><div class="card"><div class="title" style="margin-top:0"><h2>최근 입출금</h2><span>최근 6건</span></div><div id="recentTx"></div></div></div></section>
 
-<section id="members" class="view"><div class="title"><h2>회원 명단</h2><button class="btn dark small" onclick="openMember()">+ 회원 추가</button></div><div class="card"><div class="toolbar"><input id="memberSearchAdmin" placeholder="회원 검색" oninput="renderMembers()"><select id="posFilter" onchange="renderMembers()"><option value="">전체 포지션</option><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div><div class="table-wrap"><table><thead><tr><th>이름</th><th>나이</th><th>연락처</th><th>포지션</th><th>PIN</th><th>관리</th></tr></thead><tbody id="memberBody"></tbody></table></div></div></section>
+<section id="members" class="view"><div class="title"><h2>회원 명단</h2><button class="btn dark small" onclick="openMember()">+ 회원 추가</button></div><div class="card"><div class="toolbar"><input id="memberSearchAdmin" placeholder="회원 검색" oninput="renderMembers()"><select id="posFilter" onchange="renderMembers()"><option value="">전체 포지션</option><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div><div class="table-wrap"><table><thead><tr><th>이름</th><th>출생연도</th><th>연락처</th><th>포지션</th><th>PIN</th><th>관리</th></tr></thead><tbody id="memberBody"></tbody></table></div></div></section>
 
 <section id="finance" class="view"><div class="title"><h2>회비 · 비용</h2><button class="btn dark small" onclick="openTx()">+ 입출금 등록</button></div><div id="financeKpis" class="grid g4"></div><div class="title"><h2>회원별 월 회비</h2></div><div class="card"><div class="toolbar"><input type="month" id="feeMonth" onchange="renderFees()"><div class="row"><input type="number" id="feeAmount" min="0" step="1000" style="width:125px"><button class="btn small" onclick="saveFeeAmount()">회비 저장</button></div></div><div class="table-wrap"><table><thead><tr><th>회원</th><th>포지션</th><th>회비</th><th>상태</th><th>납부일</th><th>관리</th></tr></thead><tbody id="feeBody"></tbody></table></div></div><div class="title"><h2>일자별 입출금</h2></div><div class="card"><div class="toolbar"><input type="month" id="txMonth" onchange="renderTx()"><select id="txTypeFilter" onchange="renderTx()"><option value="">전체</option><option value="income">수입</option><option value="expense">지출</option></select></div><div class="table-wrap"><table><thead><tr><th>일자</th><th>구분</th><th>항목</th><th>회원/대상</th><th>금액</th><th>비고</th><th>관리</th></tr></thead><tbody id="txBody"></tbody></table></div></div></section>
 
-<section id="attendance" class="view"><div class="title"><h2>일요일 모임 · 참석</h2><button class="btn dark small" onclick="createMeeting()">+ 다음 모임 생성</button></div><div class="card"><div class="toolbar"><select id="meetingSelect" onchange="renderAttendance()"></select><button class="btn blue small" onclick="openAttendance()">총무 직접 수정</button></div><div id="attendanceSummary"></div></div><div class="title"><h2>포지션 자동 팀 편성</h2><span>팀당 4포지션 각 1명</span></div><div class="card"><div class="row"><button class="btn dark" onclick="generateTeams()">자동 팀 생성</button><button class="btn" onclick="generateTeams()">다시 섞기</button></div><div class="notice" style="margin-top:10px">주 포지션을 우선 배정하고, 부족한 포지션은 회원의 멀티포지션 가능 범위에서 자동 보완합니다. 같은 회원은 한 팀에만 배정됩니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
+<section id="attendance" class="view"><div class="title"><h2>일요일 모임 · 참석</h2><button class="btn dark small" onclick="createMeeting()">+ 다음 모임 생성</button></div><div class="card"><div class="toolbar"><select id="meetingSelect" onchange="renderAttendance()"></select><button class="btn blue small" onclick="openAttendance()">총무 직접 수정</button></div><div id="attendanceSummary"></div></div><div class="title"><h2>자동 팀 편성</h2><span>편성 방식 선택</span></div><div class="card">
+    <div class="row">
+      <button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 생성</button>
+      <button class="btn blue" onclick="generateTeams('random')">완전 랜덤 생성</button>
+    </div>
+    <div class="notice" style="margin-top:10px"><b>포지션 균형</b>: 공격·토스·좌수비·우수비를 고려합니다.<br><b>완전 랜덤</b>: 포지션과 관계없이 참석자를 무작위로 4명씩 배정하고 남는 인원은 대기자로 분류합니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
 
 <section id="matchday" class="view">
 <div class="title"><h2>일요일 경기 운영 모드</h2><span>현장 진행용</span></div>
@@ -24,7 +29,7 @@
   </div>
   <div id="matchdaySummary"></div>
 </div>
-<div class="title"><h2>오늘의 팀</h2><button class="btn dark small" onclick="generateTeams()">팀 다시 편성</button></div>
+<div class="title"><h2>오늘의 팀</h2><div class="row"><button class="btn dark small" onclick="generateTeams('balanced')">균형 편성</button><button class="btn blue small" onclick="generateTeams('random')">랜덤 편성</button></div></div>
 <div class="card"><div id="matchdayTeams"></div></div>
 <div class="title"><h2>경기 진행</h2><button class="btn dark small" onclick="addGameFromMatchday()">+ 경기 추가</button></div>
 <div class="card"><div id="matchdayGames"></div></div>
@@ -54,43 +59,11 @@
 </div></nav>
 </div>
 
-<div class="modal" id="memberModal"><div class="modal-card"><div class="modal-head"><h3 id="memberTitle">회원 추가</h3><button class="close" onclick="closeModal('memberModal')">×</button></div><input id="memberId" type="hidden"><div class="form-grid"><div class="field"><label>이름 *</label><input id="memberName"></div><div class="field"><label>나이</label><input id="memberAge" type="number"></div><div class="field"><label>연락처</label><input id="memberPhone" type="tel"></div><div class="field"><label>주 포지션 *</label><select id="memberPosition"><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div>
-<div class="field"><label>가능 포지션 (멀티 선택)</label>
-  <div id="memberPositionChecks" class="position-check-grid">
-    <label class="position-check"><input type="checkbox" value="공격"> 공격</label>
-    <label class="position-check"><input type="checkbox" value="토스"> 토스</label>
-    <label class="position-check"><input type="checkbox" value="좌수비"> 좌수비</label>
-    <label class="position-check"><input type="checkbox" value="우수비"> 우수비</label>
-  </div>
-</div>
-<div class="field"><label>참석 PIN *</label><input id="memberPin" type="password" inputmode="numeric" maxlength="4" placeholder="4자리 숫자"></div></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveMember()">저장</button></div></div>
+<div class="modal" id="memberModal"><div class="modal-card"><div class="modal-head"><h3 id="memberTitle">회원 추가</h3><button class="close" onclick="closeModal('memberModal')">×</button></div><input id="memberId" type="hidden"><div class="form-grid"><div class="field"><label>이름 *</label><input id="memberName"></div><div class="field"><label>출생연도</label><input id="memberBirthYear" type="number" min="1930" max="2100" inputmode="numeric" placeholder="예: 1977"></div><div class="field"><label>연락처</label><input id="memberPhone" type="tel"></div><div class="field"><label>포지션 *</label><select id="memberPosition"><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div><div class="field"><label>참석 PIN *</label><input id="memberPin" type="password" inputmode="numeric" maxlength="4" placeholder="4자리 숫자"></div></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveMember()">저장</button></div></div>
 
 <div class="modal" id="txModal"><div class="modal-card"><div class="modal-head"><h3 id="txModalTitle">입출금 등록</h3><button class="close" onclick="closeModal('txModal')">×</button></div><input id="txId" type="hidden"><div class="form-grid"><div class="field"><label>일자 *</label><input id="txDate" type="date"></div><div class="field"><label>구분 *</label><select id="txType"><option value="income">수입</option><option value="expense">지출</option></select></div><div class="field"><label>항목 *</label><input id="txCategory"></div><div class="field"><label>회원/대상</label><input id="txTarget"></div><div class="field"><label>금액 *</label><input id="txAmount" type="number" min="0" step="1000"></div><div class="field"><label>비고</label><input id="txMemo"></div></div><button id="txSaveBtn" class="btn dark" style="width:100%;margin-top:14px" onclick="saveTx()">등록</button></div></div>
 
 <div class="modal" id="attendanceModal"><div class="modal-card"><div class="modal-head"><h3>참석자 직접 수정</h3><button class="close" onclick="closeModal('attendanceModal')">×</button></div><div id="attendanceChecks" class="grid g2"></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveAttendance()">저장</button></div></div>
-
-<div class="modal" id="feePaymentModal"><div class="modal-card">
-  <div class="modal-head"><h3 id="feePaymentTitle">회비 납부 등록</h3><button class="close" onclick="closeModal('feePaymentModal')">×</button></div>
-  <input id="feePaymentId" type="hidden">
-  <input id="feePaymentMemberId" type="hidden">
-  <div class="notice" id="feePaymentMemberLabel" style="margin-bottom:12px"></div>
-  <div class="form-grid">
-    <div class="field"><label>적용 시작월 *</label><input id="feeStartMonth" type="month"></div>
-    <div class="field"><label>납부 기간 *</label>
-      <select id="feeMonths">
-        <option value="1">1개월</option>
-        <option value="3">3개월</option>
-        <option value="6">6개월</option>
-        <option value="12">12개월 (연납)</option>
-      </select>
-    </div>
-    <div class="field"><label>실제 입금일 *</label><input id="feePaidDate" type="date"></div>
-    <div class="field"><label>입금 예정 금액</label><input id="feePaymentAmount" type="text" disabled></div>
-  </div>
-  <div class="notice" style="margin-top:10px">연납 또는 다개월 납부는 실제 입금 1건만 수입으로 등록하고, 선택한 기간의 월별 회비 상태를 해당 입금 내역에 연결합니다.</div>
-  <button class="btn dark" style="width:100%;margin-top:14px" onclick="saveFeePayment()">저장</button>
-</div></div>
-
 <div class="modal" id="scoreModal"><div class="modal-card">
 <div class="modal-head"><h3>경기 점수 입력</h3><button class="close" onclick="closeModal('scoreModal')">×</button></div>
 <input id="scoreGameId" type="hidden">

@@ -1,4 +1,4 @@
-let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], settings={monthly_fee:20000};
+let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], games=[], gameDues=[], settings={monthly_fee:20000};
 const openModal=id=>$(id).classList.add('show'),closeModal=id=>$(id).classList.remove('show');
 async function init(){
   if(!requireConfig())return;
@@ -27,14 +27,13 @@ async function loadAll(){
     sb.from('team_members').select('*'),
     sb.from('transactions').select('*').order('tx_date',{ascending:false}),
     sb.from('fees').select('*'),
-    sb.from('fee_payments').select('*').order('paid_date',{ascending:false}),
     sb.from('games').select('*'),
     sb.from('game_dues').select('*').order('due_date',{ascending:false}),
     sb.from('club_settings').select('*').eq('id',1).maybeSingle()
   ]);
   if(queries.some(q=>q.error)){console.error(queries.map(q=>q.error));return toast('데이터 로드 오류')}
-  [members,meetings,attendance,teams,teamMembers,transactions,fees,feePayments,games,gameDues]=queries.slice(0,10).map(q=>q.data||[]);
-  settings=queries[10].data||{id:1,monthly_fee:20000};
+  [members,meetings,attendance,teams,teamMembers,transactions,fees,games,gameDues]=queries.slice(0,9).map(q=>q.data||[]);
+  settings=queries[9].data||{id:1,monthly_fee:20000};
   renderAll();
 }
 let rtStarted=false;
@@ -53,18 +52,12 @@ function renderDashboard(){
   $('recentTx').innerHTML=transactions.slice(0,6).map(t=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb"><span>${t.tx_date} · ${t.category}</span><b class="${t.tx_type==='income'?'money-in':'money-out'}">${t.tx_type==='income'?'+':'-'} ${won(t.amount)}</b></div>`).join('')||'<div class="empty">내역 없음</div>';
 }
 function openMember(id){
-  const m=members.find(x=>x.id===id);$('memberTitle').textContent=m?'회원 수정':'회원 추가';$('memberId').value=m?.id||'';$('memberName').value=m?.name||'';$('memberAge').value=m?.age||'';$('memberPhone').value=m?.phone||'';$('memberPosition').value=m?.position||'공격';
-  const allowed=(m?.positions&&Array.isArray(m.positions)&&m.positions.length)?m.positions:[m?.position||'공격'];
-  document.querySelectorAll('#memberPositionChecks input').forEach(ch=>ch.checked=allowed.includes(ch.value));
-  $('memberPin').value='';$('memberPin').placeholder=m?'변경할 때만 새 PIN 입력':'4자리 숫자';openModal('memberModal')
+  const m=members.find(x=>x.id===id);$('memberTitle').textContent=m?'회원 수정':'회원 추가';$('memberId').value=m?.id||'';$('memberName').value=m?.name||'';$('memberBirthYear').value=m?.birth_year||'';$('memberPhone').value=m?.phone||'';$('memberPosition').value=m?.position||'공격';$('memberPin').value='';$('memberPin').placeholder=m?'변경할 때만 새 PIN 입력':'4자리 숫자';openModal('memberModal')
 }
 async function saveMember(){
   const id=$('memberId').value,name=$('memberName').value.trim(),pin=$('memberPin').value.trim();if(!name)return toast('이름을 입력하세요.');if((!id&&!/^\d{4}$/.test(pin))||(pin&&!/^\d{4}$/.test(pin)))return toast('PIN은 4자리 숫자입니다.');
-  const positions=[...document.querySelectorAll('#memberPositionChecks input:checked')].map(x=>x.value);
-  const primary=$('memberPosition').value;
-  if(!positions.includes(primary))positions.unshift(primary);
-  const payload={name,age:Number($('memberAge').value)||null,phone:$('memberPhone').value.trim()||null,position:primary,positions};
-  let q=id?sb.from('members').update(payload).eq('id',id):sb.rpc('admin_create_member_v36',{p_name:name,p_age:payload.age,p_phone:payload.phone,p_position:payload.position,p_positions:positions,p_pin:pin});
+  const payload={name,birth_year:Number($('memberBirthYear').value)||null,phone:$('memberPhone').value.trim()||null,position:$('memberPosition').value};
+  let q=id?sb.from('members').update(payload).eq('id',id):sb.rpc('admin_create_member_v40',{p_name:name,p_birth_year:payload.birth_year,p_phone:payload.phone,p_position:payload.position,p_pin:pin});
   let {data,error}=await q;if(error)return toast(error.message);
   if(id&&pin){const r=await sb.rpc('admin_set_member_pin',{p_member_id:id,p_pin:pin});if(r.error)return toast(r.error.message)}
   closeModal('memberModal');toast('회원 저장 완료');await loadAll();
@@ -72,7 +65,7 @@ async function saveMember(){
 async function deleteMember(id){if(!confirm('회원을 삭제할까요?'))return;const {error}=await sb.from('members').delete().eq('id',id);if(error)return toast(error.message);await loadAll()}
 function renderMembers(){
   const q=$('memberSearchAdmin')?.value.trim()||'',p=$('posFilter')?.value||'';const rows=members.filter(m=>(!q||(m.name+(m.phone||'')).includes(q))&&(!p||m.position===p));
-  $('memberBody').innerHTML=rows.map(m=>`<tr><td><b>${m.name}</b></td><td>${m.age||'-'}</td><td>${m.phone||'-'}</td><td><div class="multi-position-list">${((m.positions&&m.positions.length)?m.positions:[m.position]).map(p=>badge(p)).join('')}</div><div class="assigned-position">주: ${m.position}</div></td><td>••••</td><td><button class="btn small" onclick="openMember('${m.id}')">수정</button> <button class="btn red small" onclick="deleteMember('${m.id}')">삭제</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">회원 없음</td></tr>';
+  $('memberBody').innerHTML=rows.map(m=>`<tr><td><b>${m.name}</b></td><td>${m.birth_year||'-'}</td><td>${m.phone||'-'}</td><td>${badge(m.position)}</td><td>••••</td><td><button class="btn small" onclick="openMember('${m.id}')">수정</button> <button class="btn red small" onclick="deleteMember('${m.id}')">삭제</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">회원 없음</td></tr>';
 }
 function renderFinance(){
   if(!$('feeMonth').value)$('feeMonth').value=new Date().toISOString().slice(0,7);if(!$('txMonth').value)$('txMonth').value=new Date().toISOString().slice(0,7);$('feeAmount').value=settings.monthly_fee;
@@ -80,68 +73,9 @@ function renderFinance(){
 }
 async function saveFeeAmount(){const amount=Number($('feeAmount').value)||0;const {error}=await sb.from('club_settings').upsert({id:1,monthly_fee:amount});if(error)return toast(error.message);settings.monthly_fee=amount;toast('월 회비 저장');renderFees()}
 function renderFees(){
-  const month=$('feeMonth').value;
-  $('feeBody').innerHTML=members.map(m=>{
-    const f=fees.find(x=>x.member_id===m.id&&String(x.fee_month).slice(0,7)===month);
-    const payment=f?.payment_id?feePayments.find(x=>x.id===f.payment_id):null;
-    const status=f?.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>';
-    let action;
-    if(f?.paid && payment){
-      action=`<button class="btn blue small" onclick="openFeePayment('${m.id}','${month}','${payment.id}')">수정</button> <button class="btn red small" onclick="cancelFeePayment('${payment.id}')">취소</button>`;
-    }else if(f?.paid){
-      action=`<button class="btn red small" onclick="legacyCancelFee('${m.id}','${month}')">취소</button>`;
-    }else{
-      action=`<button class="btn green small" onclick="openFeePayment('${m.id}','${month}')">납부</button>`;
-    }
-    const paidInfo=payment?`${payment.paid_date}<br><span style="font-size:11px;color:#6b7280">${payment.months_count}개월 납부</span>`:(f?.paid_date||'-');
-    return `<tr><td><b>${m.name}</b></td><td>${badge(m.position)}</td><td>${won(settings.monthly_fee)}</td><td>${status}</td><td>${paidInfo}</td><td>${action}</td></tr>`;
-  }).join('');
+  const month=$('feeMonth').value;$('feeBody').innerHTML=members.map(m=>{const f=fees.find(x=>x.member_id===m.id&&x.fee_month===month);return`<tr><td><b>${m.name}</b></td><td>${badge(m.position)}</td><td>${won(settings.monthly_fee)}</td><td>${f?.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>'}</td><td>${f?.paid_date||'-'}</td><td>${f?.paid?`<button class="btn red small" onclick="setFee('${m.id}','${month}',false)">취소</button>`:`<button class="btn green small" onclick="setFee('${m.id}','${month}',true)">납부</button>`}</td></tr>`}).join('');
 }
-function openFeePayment(memberId,month,paymentId=''){
-  const member=members.find(m=>m.id===memberId),p=paymentId?feePayments.find(x=>x.id===paymentId):null;
-  $('feePaymentTitle').textContent=p?'회비 납부 수정':'회비 납부 등록';
-  $('feePaymentId').value=p?.id||'';
-  $('feePaymentMemberId').value=memberId;
-  $('feePaymentMemberLabel').innerHTML=`<b>${member?.name||'-'}</b> · ${member?.position||'-'}`;
-  $('feeStartMonth').value=p?String(p.start_month).slice(0,7):month;
-  $('feeMonths').value=String(p?.months_count||1);
-  $('feePaidDate').value=p?.paid_date||today();
-  updateFeePaymentAmount();
-  openModal('feePaymentModal');
-}
-function updateFeePaymentAmount(){
-  $('feePaymentAmount').value=won(Number(settings.monthly_fee||0)*Number($('feeMonths').value||1));
-}
-async function saveFeePayment(){
-  const paymentId=$('feePaymentId').value||null,memberId=$('feePaymentMemberId').value;
-  const start=$('feeStartMonth').value,months=Number($('feeMonths').value),paidDate=$('feePaidDate').value;
-  if(!start||!paidDate||![1,3,6,12].includes(months))return toast('납부 정보를 확인하세요.');
-  const {error}=await sb.rpc('admin_save_fee_payment',{
-    p_payment_id:paymentId,
-    p_member_id:memberId,
-    p_start_month:start+'-01',
-    p_months_count:months,
-    p_paid_date:paidDate
-  });
-  if(error)return toast(error.message);
-  closeModal('feePaymentModal');
-  toast(paymentId?'회비 납부 수정 완료':'회비 납부 등록 완료');
-  await loadAll();
-}
-async function cancelFeePayment(paymentId){
-  const p=feePayments.find(x=>x.id===paymentId),m=members.find(x=>x.id===p?.member_id);
-  if(!confirm(`${m?.name||'회원'}의 ${p?.months_count||''}개월 회비 납부 처리를 취소할까요?
-연결된 수입 내역도 함께 삭제됩니다.`))return;
-  const {error}=await sb.rpc('admin_cancel_fee_payment',{p_payment_id:paymentId});
-  if(error)return toast(error.message);
-  toast('회비 납부 취소 완료');
-  await loadAll();
-}
-async function legacyCancelFee(memberId,month){
-  const {error}=await sb.rpc('admin_set_fee',{p_member_id:memberId,p_month:month+'-01',p_paid:false});
-  if(error)return toast(error.message);
-  await loadAll();
-}
+async function setFee(memberId,month,paid){const {data,error}=await sb.rpc('admin_set_fee',{p_member_id:memberId,p_month:month+'-01',p_paid:paid});if(error)return toast(error.message);toast(paid?'납부 처리 완료':'납부 취소');await loadAll()}
 function openTx(id){
   const t=id?transactions.find(x=>x.id===id):null;
   if(t && t.source!=='manual') return toast('자동 생성 내역은 직접 수정할 수 없습니다.');
@@ -208,10 +142,17 @@ function renderAttendance(){
 }
 function openAttendance(){const m=currentMeeting();if(!m)return;$('attendanceChecks').innerHTML=members.map(x=>{const yes=attendance.some(a=>a.meeting_id===m.id&&a.member_id===x.id&&a.attending);return`<label class="row" style="border:1px solid #e5e7eb;border-radius:12px;padding:10px"><input type="checkbox" value="${x.id}" ${yes?'checked':''}><b>${x.name}</b>${badge(x.position)}</label>`}).join('');openModal('attendanceModal')}
 async function saveAttendance(){const m=currentMeeting(),checked=[...$('attendanceChecks').querySelectorAll('input:checked')].map(x=>x.value);const {error}=await sb.rpc('admin_replace_attendance',{p_meeting_id:m.id,p_member_ids:checked});if(error)return toast(error.message);closeModal('attendanceModal');await loadAll()}
-async function generateTeams(){const m=currentMeeting();if(!m)return;const {data,error}=await sb.rpc('admin_generate_teams',{p_meeting_id:m.id});if(error)return toast(error.message);toast(`팀 ${data?.team_count||0}개 생성`);await loadAll()}
+async function generateTeams(mode='balanced'){
+  const m=currentMeeting();if(!m)return;
+  const rpc=mode==='random'?'admin_generate_random_teams':'admin_generate_teams';
+  const {data,error}=await sb.rpc(rpc,{p_meeting_id:m.id});
+  if(error)return toast(error.message);
+  toast(`${mode==='random'?'완전 랜덤':'포지션 균형'} 팀 ${data?.team_count||0}개 생성`);
+  await loadAll()
+}
 function renderTeams(){
   const m=currentMeeting();if(!m)return;const ts=teams.filter(t=>t.meeting_id===m.id).sort((a,b)=>a.team_no-b.team_no);const used=teamMembers.filter(tm=>ts.some(t=>t.id===tm.team_id)).map(tm=>tm.member_id),waiting=attendingPeople(m).filter(x=>!used.includes(x.id));
-  $('teamArea').innerHTML=ts.length?`<div class="team-grid">${ts.map(t=>`<div class="team-card"><h3>${t.team_name}</h3>${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>({tm,x:members.find(x=>x.id===tm.member_id)})).filter(v=>v.x).map(v=>`<div class="team-member"><b>${v.x.name}</b><span>${badge(v.tm.assigned_position||v.x.position)}<span class="assigned-position">${v.x.position!==(v.tm.assigned_position||v.x.position)?'주 '+v.x.position:''}</span></span></div>`).join('')}</div>`).join('')}</div>${waiting.length?`<div class="notice" style="margin-top:12px"><b>대기:</b> ${waiting.map(x=>`${x.name}(${x.position})`).join(', ')}</div>`:''}`:'<div class="empty">팀을 생성해 주세요.</div>';
+  $('teamArea').innerHTML=ts.length?`<div class="team-grid">${ts.map(t=>`<div class="team-card"><h3>${t.team_name}</h3>${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>members.find(x=>x.id===tm.member_id)).filter(Boolean).map(x=>`<div class="team-member"><b>${x.name}</b>${badge(x.position)}</div>`).join('')}</div>`).join('')}</div>${waiting.length?`<div class="notice" style="margin-top:12px"><b>대기:</b> ${waiting.map(x=>`${x.name}(${x.position})`).join(', ')}</div>`:''}`:'<div class="empty">팀을 생성해 주세요.</div>';
 }
 async function addGame(){
   const m=currentMeeting('gameMeetingSelect'),ts=teams.filter(t=>t.meeting_id===m?.id).sort((a,b)=>a.team_no-b.team_no);
@@ -272,7 +213,7 @@ function renderMatchday(){
     <div class="kpi"><div class="label">팀 수</div><div class="value">${ts.length}팀</div></div>
     <div class="kpi"><div class="label">완료 경기</div><div class="value">${completed}/${gs.length}</div></div>
   </div><div class="row" style="margin-top:12px">${POSITIONS.map(p=>`${badge(p)} <b>${people.filter(x=>x.position===p).length}명</b>`).join('')}</div>`;
-  $('matchdayTeams').innerHTML=ts.length?`<div class="team-grid">${ts.map(t=>`<div class="team-card"><h3>${t.team_name}</h3>${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>({tm,x:members.find(x=>x.id===tm.member_id)})).filter(v=>v.x).map(v=>`<div class="team-member"><b>${v.x.name}</b><span>${badge(v.tm.assigned_position||v.x.position)}<span class="assigned-position">${v.x.position!==(v.tm.assigned_position||v.x.position)?'주 '+v.x.position:''}</span></span></div>`).join('')}</div>`).join('')}</div>`:'<div class="empty">참석자 확인 후 팀을 생성하세요.</div>';
+  $('matchdayTeams').innerHTML=ts.length?`<div class="team-grid">${ts.map(t=>`<div class="team-card"><h3>${t.team_name}</h3>${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>members.find(x=>x.id===tm.member_id)).filter(Boolean).map(x=>`<div class="team-member"><b>${x.name}</b>${badge(x.position)}</div>`).join('')}</div>`).join('')}</div>`:'<div class="empty">참석자 확인 후 팀을 생성하세요.</div>';
   $('matchdayGames').innerHTML=gs.length?gs.map((g,i)=>`<div class="row" style="justify-content:space-between;padding:12px 0;border-bottom:1px solid #e5e7eb">
     <div><b>${i+1}경기</b><div style="margin-top:4px">${teamName(g.team_a)} <b>${g.score_a??'-'} : ${g.score_b??'-'}</b> ${teamName(g.team_b)}</div></div>
     <button class="btn ${g.winner_team_id?'green':'blue'} small" onclick="openScore('${g.id}')">${g.winner_team_id?'결과 수정':'점수 입력'}</button>
@@ -310,5 +251,3 @@ async function cancelDuePaid(id){
   const {error}=await sb.rpc('admin_cancel_game_due_paid',{p_due_id:id});if(error)return toast(error.message);
   toast('입금 처리 취소');await loadAll()
 }
-
-$('feeMonths')?.addEventListener('change',updateFeePaymentAmount);

@@ -144,35 +144,15 @@ body{
   }
 }
 
-/* ===== V3.6 MULTI POSITION ===== */
-.position-check-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:7px;
-}
-.position-check{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  padding:10px;
-  border:1px solid var(--line);
-  border-radius:11px;
-  background:#fff;
-  color:#111827;
-  font-size:13px;
-}
-.position-check input{
-  width:18px!important;
-  height:18px;
-  margin:0;
-}
-.multi-position-list{
-  display:flex;
-  flex-wrap:wrap;
-  gap:4px;
-}
-.assigned-position{
-  font-size:11px;
-  color:#6b7280;
-  margin-left:5px;
+/* ===== V4 MEMBER READONLY DASHBOARD ===== */
+.dashboard-readonly{background:rgba(255,255,255,.97);color:#111827}
+.member-card .title h2{color:#fff}
+.member-card .title span{color:#cbd5e1}
+.member-card #memberDashMonth{background:#fff;color:#111827;max-width:160px}
+.member-card .dashboard-readonly .table-wrap{max-height:320px}
+@media(max-width:760px){
+  .member-card{padding:16px}
+  .member-card .g4{grid-template-columns:repeat(2,1fr)}
+  .member-card .dashboard-readonly table{min-width:0}
+  .member-card .dashboard-readonly th,.member-card .dashboard-readonly td{white-space:nowrap}
 }

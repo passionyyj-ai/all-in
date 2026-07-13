@@ -103,7 +103,7 @@ function renderFees(){
     }else{
       action=`<button class="btn green small" onclick="openFeePayment('${m.id}','${month}')">납부</button>`;
     }
-    return `<tr><td><b>${m.name}</b></td><td>${badge(m.position)}</td><td>${won(settings.monthly_fee)}</td><td>${f?.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">게임비 잔액</span>'}</td><td>${paidInfo}</td><td>${action}</td></tr>`;
+    return `<tr><td><b>${m.name}</b></td><td>${badge(m.position)}</td><td>${won(settings.monthly_fee)}</td><td>${f?.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부완료</span>':'<span class="badge">회비 미납</span>'}</td><td>${paidInfo}</td><td>${action}</td></tr>`;
   }).join('');
 }
 function openFeePayment(memberId,month,paymentId=''){

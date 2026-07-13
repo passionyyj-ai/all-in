@@ -404,6 +404,43 @@ function renderReceivables(){
   if(!$('duesMonth').value)$('duesMonth').value=new Date().toISOString().slice(0,7);
   const status=$('duesStatusFilter').value,month=$('duesMonth').value;
   const monthRows=gameDues.filter(d=>monthKey(d.due_date)===month);
+
+  const meetingGroups={};
+  monthRows.forEach(d=>{
+    const key=d.meeting_id||d.due_date;
+    const meeting=meetings.find(m=>m.id===d.meeting_id);
+    if(!meetingGroups[key])meetingGroups[key]={
+      date:meeting?.meeting_date||d.due_date,
+      rows:[]
+    };
+    meetingGroups[key].rows.push(d);
+  });
+
+  const meetingHtml=Object.values(meetingGroups).sort((a,b)=>b.date.localeCompare(a.date)).map(g=>{
+    const grouped={};
+    g.rows.forEach(d=>{
+      const m=members.find(x=>x.id===d.member_id);
+      if(!grouped[d.member_id])grouped[d.member_id]={name:m?.name||'-',total:0,paid:0,unpaid:0};
+      grouped[d.member_id].total+=Number(d.amount);
+      if(d.status==='paid')grouped[d.member_id].paid+=Number(d.amount);
+      else grouped[d.member_id].unpaid+=Number(d.amount);
+    });
+    let people=Object.values(grouped);
+    if(status==='unpaid')people=people.filter(x=>x.unpaid>0);
+    if(status==='paid')people=people.filter(x=>x.paid>0);
+    const unpaidTotal=people.reduce((s,x)=>s+x.unpaid,0);
+    return `<div class="card" style="margin-bottom:12px">
+      <div class="row" style="justify-content:space-between">
+        <div><b>${g.date} 모임</b><div style="font-size:12px;color:#6b7280;margin-top:3px">미수 ${won(unpaidTotal)}</div></div>
+        <button class="btn blue small" onclick="shareMeetingGameDues('${g.date}')">공유</button>
+      </div>
+      <div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>회원</th><th>청구</th><th>납부</th><th>미납</th></tr></thead><tbody>
+      ${people.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr><td><b>${x.name}</b></td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td><td class="${x.unpaid>0?'money-out':''}"><b>${won(x.unpaid)}</b></td></tr>`).join('')||'<tr><td colspan="4" class="empty">내역 없음</td></tr>'}
+      </tbody></table></div>
+    </div>`;
+  }).join('');
+  $('duesByMeeting').innerHTML=meetingHtml||'<div class="empty">해당 월의 모임별 게임비 내역이 없습니다.</div>';
+
   const grouped={};
   monthRows.forEach(d=>{
     const m=members.find(x=>x.id===d.member_id);
@@ -421,7 +458,7 @@ function renderReceivables(){
   $('duesBody').innerHTML=rows.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr>
     <td><b>${x.name}</b></td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td>
     <td class="${x.unpaid>0?'money-out':''}"><b>${won(x.unpaid)}</b></td><td>${x.unpaidCount}건</td>
-    <td>${x.unpaid>0?`<button class="btn green small" onclick="markMemberDuesPaid('${x.memberId}','${month}')">합계 입금확인</button>`:'<span class="badge" style="background:#dcfce7;color:#166534">완납</span>'}</td>
+    <td><div class="row">${x.unpaid>0?`<button class="btn green small" onclick="markMemberDuesPaid('${x.memberId}','${month}')">합계 입금확인</button><button class="btn blue small" onclick="shareMemberGameDues('${x.memberId}')">공유</button>`:'<span class="badge" style="background:#dcfce7;color:#166534">완납</span>'}</div></td>
   </tr>`).join('')||'<tr><td colspan="6" class="empty">내역 없음</td></tr>';
 }
 async function markMemberDuesPaid(memberId,month){
@@ -482,4 +519,49 @@ async function executeReset(){
   closeModal('resetModal');
   toast('회원 명단을 제외한 운영 데이터 초기화 완료');
   await loadAll();
+}
+
+function currentDuesMonth(){return $('duesMonth')?.value||new Date().toISOString().slice(0,7)}
+function unpaidRowsForMonth(){const month=currentDuesMonth();return gameDues.filter(d=>monthKey(d.due_date)===month&&d.status==='unpaid')}
+function buildAllDuesShareText(rows=unpaidRowsForMonth(),title='게임비 납부 안내'){
+  const grouped={};
+  rows.forEach(d=>{
+    const m=members.find(x=>x.id===d.member_id);
+    const name=m?.name||'-';
+    if(!grouped[name])grouped[name]=0;
+    grouped[name]+=Number(d.amount);
+  });
+  const people=Object.entries(grouped).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko'));
+  const total=people.reduce((s,x)=>s+x[1],0);
+  return `⚽ 올인 족구단 ${title}\n${currentDuesMonth().replace('-','년 ')}월\n\n${people.map(([name,amount])=>`• ${name} : ${won(amount)}`).join('\n')}\n\n총 미납금액 : ${won(total)}\n입금 완료 후 총무에게 알려주세요.`;
+}
+function buildMemberDuesShareText(memberId){
+  const month=currentDuesMonth();
+  const m=members.find(x=>x.id===memberId);
+  const rows=gameDues.filter(d=>d.member_id===memberId&&d.status==='unpaid'&&monthKey(d.due_date)===month);
+  const byDate={};
+  rows.forEach(d=>{byDate[d.due_date]=(byDate[d.due_date]||0)+Number(d.amount)});
+  const total=rows.reduce((s,d)=>s+Number(d.amount),0);
+  return `⚽ 올인 족구단 게임비 안내\n${m?.name||'회원'}님\n\n${Object.entries(byDate).sort().map(([date,amount])=>`• ${date} : ${won(amount)}`).join('\n')}\n\n입금하실 게임비 합계 : ${won(total)}\n입금 완료 후 총무에게 알려주세요.`;
+}
+async function shareText(text,title='올인 족구단 게임비'){
+  if(navigator.share){
+    try{await navigator.share({title,text});return}catch(e){if(e.name==='AbortError')return}
+  }
+  await navigator.clipboard.writeText(text);
+  toast('공유문구를 복사했습니다. 카카오톡 단톡방에 붙여넣으세요.');
+}
+function shareAllGameDues(){const rows=unpaidRowsForMonth();if(!rows.length)return toast('공유할 미납 내역이 없습니다.');shareText(buildAllDuesShareText(rows))}
+async function copyAllGameDues(){
+  const rows=unpaidRowsForMonth();if(!rows.length)return toast('복사할 미납 내역이 없습니다.');
+  await navigator.clipboard.writeText(buildAllDuesShareText(rows));toast('미납 안내 문구 복사 완료');
+}
+function shareMeetingGameDues(date){
+  const rows=unpaidRowsForMonth().filter(d=>d.due_date===date);
+  if(!rows.length)return toast('해당 모임일의 미납 내역이 없습니다.');
+  shareText(buildAllDuesShareText(rows,`${date} 모임 게임비 안내`));
+}
+function shareMemberGameDues(memberId){
+  const text=buildMemberDuesShareText(memberId);
+  shareText(text,'개인 게임비 안내');
 }

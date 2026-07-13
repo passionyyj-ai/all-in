@@ -1,4 +1,4 @@
-let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], settings={monthly_fee:20000};
+let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], settings={monthly_fee:20000};
 const openModal=id=>$(id).classList.add('show'),closeModal=id=>$(id).classList.remove('show');
 async function init(){
   if(!requireConfig())return;
@@ -27,6 +27,7 @@ async function loadAll(){
     sb.from('team_members').select('*'),
     sb.from('transactions').select('*').order('tx_date',{ascending:false}),
     sb.from('fees').select('*'),
+    sb.from('fee_payments').select('*').order('paid_date',{ascending:false}),
     sb.from('games').select('*'),
     sb.from('game_dues').select('*').order('due_date',{ascending:false}),
     sb.from('match_series').select('*').order('created_at',{ascending:false}),
@@ -34,8 +35,8 @@ async function loadAll(){
     sb.from('club_settings').select('*').eq('id',1).maybeSingle()
   ]);
   if(queries.some(q=>q.error)){console.error(queries.map(q=>q.error));return toast('데이터 로드 오류')}
-  [members,meetings,attendance,teams,teamMembers,transactions,fees,games,gameDues,matchSeries,seriesSets]=queries.slice(0,11).map(q=>q.data||[]);
-  settings=queries[11].data||{id:1,monthly_fee:20000};
+  [members,meetings,attendance,teams,teamMembers,transactions,fees,feePayments,games,gameDues,matchSeries,seriesSets]=queries.slice(0,12).map(q=>q.data||[]);
+  settings=queries[12].data||{id:1,monthly_fee:20000};
   renderAll();
 }
 let rtStarted=false;
@@ -75,9 +76,72 @@ function renderFinance(){
 }
 async function saveFeeAmount(){const amount=Number($('feeAmount').value)||0;const {error}=await sb.from('club_settings').upsert({id:1,monthly_fee:amount});if(error)return toast(error.message);settings.monthly_fee=amount;toast('월 회비 저장');renderFees()}
 function renderFees(){
-  const month=$('feeMonth').value;$('feeBody').innerHTML=members.map(m=>{const f=fees.find(x=>x.member_id===m.id&&x.fee_month===month);return`<tr><td><b>${m.name}</b></td><td>${badge(m.position)}</td><td>${won(settings.monthly_fee)}</td><td>${f?.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>'}</td><td>${f?.paid_date||'-'}</td><td>${f?.paid?`<button class="btn red small" onclick="setFee('${m.id}','${month}',false)">취소</button>`:`<button class="btn green small" onclick="setFee('${m.id}','${month}',true)">납부</button>`}</td></tr>`}).join('');
+  const month=$('feeMonth').value;
+  $('feeBody').innerHTML=members.map(m=>{
+    const f=fees.find(x=>x.member_id===m.id&&String(x.fee_month).slice(0,7)===month);
+    const payment=f?.payment_id?feePayments.find(x=>x.id===f.payment_id):null;
+    const paidInfo=payment?`${payment.paid_date}<br><small>${payment.months_count===1?'1개월 일시납':payment.months_count+'개월 납부'}</small>`:(f?.paid_date||'-');
+    let action;
+    if(f?.paid&&payment){
+      action=`<button class="btn blue small" onclick="openFeePayment('${m.id}','${month}','${payment.id}')">수정</button> <button class="btn red small" onclick="cancelFeePayment('${payment.id}')">취소</button>`;
+    }else if(f?.paid){
+      action=`<button class="btn red small" onclick="legacyCancelFee('${m.id}','${month}')">취소</button>`;
+    }else{
+      action=`<button class="btn green small" onclick="openFeePayment('${m.id}','${month}')">납부</button>`;
+    }
+    return `<tr><td><b>${m.name}</b></td><td>${badge(m.position)}</td><td>${won(settings.monthly_fee)}</td><td>${f?.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>'}</td><td>${paidInfo}</td><td>${action}</td></tr>`;
+  }).join('');
 }
-async function setFee(memberId,month,paid){const {data,error}=await sb.rpc('admin_set_fee',{p_member_id:memberId,p_month:month+'-01',p_paid:paid});if(error)return toast(error.message);toast(paid?'납부 처리 완료':'납부 취소');await loadAll()}
+function openFeePayment(memberId,month,paymentId=''){
+  const member=members.find(m=>m.id===memberId);
+  const payment=paymentId?feePayments.find(x=>x.id===paymentId):null;
+  $('feePaymentTitle').textContent=payment?'회비 납부 수정':'회비 납부 등록';
+  $('feePaymentId').value=payment?.id||'';
+  $('feePaymentMemberId').value=memberId;
+  $('feePaymentMemberLabel').value=`${member?.name||'-'} · ${member?.position||'-'}`;
+  $('feeStartMonth').value=payment?String(payment.start_month).slice(0,7):month;
+  $('feeMonths').value=String(payment?.months_count||1);
+  $('feePaidDate').value=payment?.paid_date||today();
+  updateFeePaymentAmount();
+  openModal('feePaymentModal');
+}
+function updateFeePaymentAmount(){
+  $('feePaymentAmount').value=won(Number(settings.monthly_fee||0)*Number($('feeMonths').value||1));
+}
+async function saveFeePayment(){
+  const paymentId=$('feePaymentId').value||null;
+  const memberId=$('feePaymentMemberId').value;
+  const start=$('feeStartMonth').value;
+  const months=Number($('feeMonths').value);
+  const paidDate=$('feePaidDate').value;
+  if(!start||!paidDate||![1,3,6,12].includes(months))return toast('납부 정보를 확인하세요.');
+  const {error}=await sb.rpc('admin_save_fee_payment',{
+    p_payment_id:paymentId,
+    p_member_id:memberId,
+    p_start_month:start+'-01',
+    p_months_count:months,
+    p_paid_date:paidDate
+  });
+  if(error)return toast(error.message);
+  closeModal('feePaymentModal');
+  toast(paymentId?'회비 납부 수정 완료':'회비 납부 등록 완료');
+  await loadAll();
+}
+async function cancelFeePayment(paymentId){
+  const payment=feePayments.find(x=>x.id===paymentId);
+  const member=members.find(x=>x.id===payment?.member_id);
+  if(!confirm(`${member?.name||'회원'}의 ${payment?.months_count||''}개월 회비 납부 처리를 취소할까요?
+연결된 수입 내역도 함께 삭제됩니다.`))return;
+  const {error}=await sb.rpc('admin_cancel_fee_payment',{p_payment_id:paymentId});
+  if(error)return toast(error.message);
+  toast('회비 납부 취소 완료');
+  await loadAll();
+}
+async function legacyCancelFee(memberId,month){
+  const {error}=await sb.rpc('admin_set_fee',{p_member_id:memberId,p_month:month+'-01',p_paid:false});
+  if(error)return toast(error.message);
+  await loadAll();
+}
 function openTx(id){
   const t=id?transactions.find(x=>x.id===id):null;
   if(t && t.source!=='manual') return toast('자동 생성 내역은 직접 수정할 수 없습니다.');

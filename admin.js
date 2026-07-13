@@ -34,8 +34,22 @@ async function loadAll(){
     sb.from('series_sets').select('*').order('set_no',{ascending:true}),
     sb.from('club_settings').select('*').eq('id',1).maybeSingle()
   ]);
-  if(queries.some(q=>q.error)){console.error(queries.map(q=>q.error));return toast('데이터 로드 오류')}
-  [members,meetings,attendance,teams,teamMembers,transactions,fees,feePayments,games,gameDues,matchSeries,seriesSets]=queries.slice(0,12).map(q=>q.data||[]);
+  const coreIndexes=[0,1,2,3,4,5,6,8,9,10,11,12];
+  const coreError=coreIndexes.map(i=>queries[i]?.error).find(Boolean);
+  if(coreError){console.error(queries.map(q=>q.error));return toast('데이터 로드 오류: '+coreError.message)}
+  members=queries[0].data||[];
+  meetings=queries[1].data||[];
+  attendance=queries[2].data||[];
+  teams=queries[3].data||[];
+  teamMembers=queries[4].data||[];
+  transactions=queries[5].data||[];
+  fees=queries[6].data||[];
+  feePayments=queries[7].error?[]:(queries[7].data||[]);
+  if(queries[7].error)console.warn('fee_payments load warning',queries[7].error);
+  games=queries[8].data||[];
+  gameDues=queries[9].data||[];
+  matchSeries=queries[10].data||[];
+  seriesSets=queries[11].data||[];
   settings=queries[12].data||{id:1,monthly_fee:20000};
   renderAll();
 }
@@ -122,7 +136,7 @@ async function saveFeePayment(){
     p_months_count:months,
     p_paid_date:paidDate
   });
-  if(error)return toast(error.message);
+  if(error){console.error('admin_save_fee_payment',error);return toast('회비 저장 실패: '+error.message)}
   closeModal('feePaymentModal');
   toast(paymentId?'회비 납부 수정 완료':'회비 납부 등록 완료');
   await loadAll();
@@ -133,7 +147,7 @@ async function cancelFeePayment(paymentId){
   if(!confirm(`${member?.name||'회원'}의 ${payment?.months_count||''}개월 회비 납부 처리를 취소할까요?
 연결된 수입 내역도 함께 삭제됩니다.`))return;
   const {error}=await sb.rpc('admin_cancel_fee_payment',{p_payment_id:paymentId});
-  if(error)return toast(error.message);
+  if(error){console.error('admin_cancel_fee_payment',error);return toast('회비 취소 실패: '+error.message)}
   toast('회비 납부 취소 완료');
   await loadAll();
 }

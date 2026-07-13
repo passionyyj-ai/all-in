@@ -1,0 +1,2 @@
+V4.8은 기존 game_dues.meeting_id 및 due_date를 사용합니다.
+추가 Supabase SQL 실행은 필요하지 않습니다.

@@ -21,3 +21,91 @@ input,select,textarea{border:1px solid #d1d5db;border-radius:12px;padding:10px 1
 .team-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.team-card{border:1px solid var(--line);border-radius:15px;padding:13px}.team-card h3{margin:0 0 8px}.team-member{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line)}
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:100;background:#111827;color:#fff;padding:10px 14px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}
 @media(max-width:760px){.g4{grid-template-columns:repeat(2,1fr)}.g2,.team-grid,.form-grid{grid-template-columns:1fr}.card{padding:13px}main{padding:11px}.kpi .value{font-size:21px}th,td{white-space:nowrap}.top .brand small{display:none}}
+
+/* ===== ALLIN CLUB V3.2 BRAND THEME ===== */
+:root{
+  --allin-pink:#ff285f;
+  --allin-pink-dark:#dd1749;
+  --allin-black:#080b10;
+}
+body{
+  background:
+    linear-gradient(rgba(7,10,15,.80),rgba(7,10,15,.82)),
+    url("allin-logo.png") center 24%/cover fixed no-repeat;
+}
+.login-wrap,.member-wrap{
+  background:
+    linear-gradient(rgba(4,7,11,.58),rgba(4,7,11,.76)),
+    url("allin-logo.png") center/cover no-repeat;
+}
+.login-card,.member-card{
+  background:rgba(10,13,18,.92);
+  border:1px solid rgba(255,255,255,.14);
+  color:#fff;
+  backdrop-filter:blur(14px);
+  box-shadow:0 24px 70px rgba(0,0,0,.45);
+}
+.login-card input,.member-card input,.member-card select{
+  background:rgba(255,255,255,.96);
+}
+.club-logo{
+  display:block;
+  width:126px;
+  height:126px;
+  margin:0 auto 10px;
+  object-fit:cover;
+  object-position:center;
+  border-radius:28px;
+  box-shadow:0 12px 30px rgba(0,0,0,.5);
+}
+.hero .ball{display:none}
+.hero h1{
+  font-size:28px;
+  letter-spacing:-1px;
+}
+.hero h1::first-letter{color:var(--allin-pink)}
+.hero p{color:#cbd5e1}
+.btn.dark,.nav.active{
+  background:linear-gradient(135deg,var(--allin-pink),var(--allin-pink-dark));
+}
+.top{
+  background:rgba(5,8,12,.96);
+  border-bottom:2px solid var(--allin-pink);
+}
+.brand-mark{
+  width:46px;height:46px;object-fit:cover;border-radius:12px;
+  margin-right:10px;vertical-align:middle;
+}
+.brand-title-wrap{display:flex;align-items:center}
+.meeting-box{
+  background:linear-gradient(135deg,#10151e,#080b10);
+  border:1px solid rgba(255,40,95,.4);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
+}
+.status.yes{border-left:5px solid var(--allin-pink)}
+.member-pick.selected{
+  border-color:var(--allin-pink);
+  box-shadow:0 0 0 3px rgba(255,40,95,.16);
+}
+.card{
+  box-shadow:0 12px 28px rgba(0,0,0,.12);
+}
+.kpi .value{letter-spacing:-.5px}
+.member-card .notice,.login-card .notice{
+  background:rgba(255,255,255,.07);
+  border-color:rgba(255,255,255,.13);
+  color:#cbd5e1;
+}
+.member-card a,.login-card a{color:#fda4af!important}
+.member-card .field label{color:#cbd5e1}
+#memberList .member-pick{color:#111827}
+.club-subtitle{
+  text-align:center;color:#fda4af;font-weight:800;
+  margin-top:-4px;margin-bottom:12px;letter-spacing:.5px;
+}
+@media(max-width:760px){
+  body{background-attachment:scroll}
+  .club-logo{width:108px;height:108px;border-radius:24px}
+  .hero h1{font-size:25px}
+  .brand-mark{width:38px;height:38px}
+}

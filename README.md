@@ -1,3 +1,30 @@
+# ⚽ 올인 족구단 V3.2
+
+## 이번 버전
+- 실제 Supabase Project URL / Publishable key 연결 완료
+- 첨부된 ALLIN JOKGUCLUB 2023 이미지 적용
+- 회원 로그인/참석 화면 경기장 배경 디자인
+- 총무 로그인과 관리자 헤더에 ALLIN 로고 적용
+- ALLIN 핑크/블랙 브랜드 테마 적용
+
+## 접속 주소
+회원: https://passionyyj-ai.github.io/all-in/
+총무: https://passionyyj-ai.github.io/all-in/admin.html
+
+## 로그인
+회원: admin / 1111
+총무: admin / 1111
+
+## 중요: Supabase DB 최초 설정
+`supabase_setup.sql`을 Supabase SQL Editor에서 전체 실행해야 합니다.
+
+총무 로그인용으로 Supabase Dashboard > Authentication > Users에서:
+- Email: admin@allin.club
+- Password: 1111
+- Auto Confirm User: ON
+
+계정을 만든 뒤 SQL 맨 아래 관리자 등록 구문을 실행합니다.
+
 # V3.1 로그인 정보
 
 - 회원 화면: `admin` / `1111`

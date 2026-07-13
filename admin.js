@@ -76,10 +76,55 @@ function renderFees(){
   const month=$('feeMonth').value;$('feeBody').innerHTML=members.map(m=>{const f=fees.find(x=>x.member_id===m.id&&x.fee_month===month);return`<tr><td><b>${m.name}</b></td><td>${badge(m.position)}</td><td>${won(settings.monthly_fee)}</td><td>${f?.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge">미납</span>'}</td><td>${f?.paid_date||'-'}</td><td>${f?.paid?`<button class="btn red small" onclick="setFee('${m.id}','${month}',false)">취소</button>`:`<button class="btn green small" onclick="setFee('${m.id}','${month}',true)">납부</button>`}</td></tr>`}).join('');
 }
 async function setFee(memberId,month,paid){const {data,error}=await sb.rpc('admin_set_fee',{p_member_id:memberId,p_month:month+'-01',p_paid:paid});if(error)return toast(error.message);toast(paid?'납부 처리 완료':'납부 취소');await loadAll()}
-function openTx(){$('txDate').value=today();$('txType').value='income';$('txCategory').value='';$('txTarget').value='';$('txAmount').value='';$('txMemo').value='';openModal('txModal')}
-async function saveTx(){const amount=Number($('txAmount').value);if(!$('txDate').value||!$('txCategory').value.trim()||amount<=0)return toast('필수값을 확인하세요.');const {error}=await sb.from('transactions').insert({tx_date:$('txDate').value,tx_type:$('txType').value,category:$('txCategory').value.trim(),target:$('txTarget').value.trim()||null,amount,memo:$('txMemo').value.trim()||null,source:'manual'});if(error)return toast(error.message);closeModal('txModal');await loadAll()}
-async function deleteTx(id){if(!confirm('내역을 삭제할까요?'))return;const {error}=await sb.from('transactions').delete().eq('id',id);if(error)return toast(error.message);await loadAll()}
-function renderTx(){const month=$('txMonth').value,type=$('txTypeFilter').value,rows=transactions.filter(t=>monthKey(t.tx_date)===month&&(!type||t.tx_type===type));$('txBody').innerHTML=rows.map(t=>`<tr><td>${t.tx_date}</td><td>${t.tx_type==='income'?'수입':'지출'}</td><td>${t.category}</td><td>${t.target||'-'}</td><td class="${t.tx_type==='income'?'money-in':'money-out'}">${t.tx_type==='income'?'+':'-'} ${won(t.amount)}</td><td>${t.memo||'-'}</td><td><button class="btn red small" onclick="deleteTx('${t.id}')">삭제</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">내역 없음</td></tr>'}
+function openTx(id){
+  const t=id?transactions.find(x=>x.id===id):null;
+  if(t && t.source!=='manual') return toast('자동 생성 내역은 직접 수정할 수 없습니다.');
+  $('txModalTitle').textContent=t?'입출금 수정':'입출금 등록';
+  $('txSaveBtn').textContent=t?'수정 저장':'등록';
+  $('txId').value=t?.id||'';
+  $('txDate').value=t?.tx_date||today();
+  $('txType').value=t?.tx_type||'income';
+  $('txCategory').value=t?.category||'';
+  $('txTarget').value=t?.target||'';
+  $('txAmount').value=t?.amount||'';
+  $('txMemo').value=t?.memo||'';
+  openModal('txModal')
+}
+async function saveTx(){
+  const id=$('txId').value;
+  const amount=Number($('txAmount').value);
+  if(!$('txDate').value||!$('txCategory').value.trim()||amount<=0)return toast('필수값을 확인하세요.');
+  const payload={
+    tx_date:$('txDate').value,
+    tx_type:$('txType').value,
+    category:$('txCategory').value.trim(),
+    target:$('txTarget').value.trim()||null,
+    amount,
+    memo:$('txMemo').value.trim()||null
+  };
+  let result;
+  if(id){
+    const t=transactions.find(x=>x.id===id);
+    if(!t||t.source!=='manual')return toast('자동 생성 내역은 수정할 수 없습니다.');
+    result=await sb.from('transactions').update(payload).eq('id',id);
+  }else{
+    result=await sb.from('transactions').insert({...payload,source:'manual'});
+  }
+  if(result.error)return toast(result.error.message);
+  closeModal('txModal');
+  toast(id?'입출금 내역 수정 완료':'입출금 등록 완료');
+  await loadAll()
+}
+async function deleteTx(id){
+  const t=transactions.find(x=>x.id===id);
+  if(!t)return;
+  if(t.source!=='manual')return toast('자동 생성 내역은 해당 원본 메뉴에서 취소하세요.');
+  if(!confirm('내역을 삭제할까요?'))return;
+  const {error}=await sb.from('transactions').delete().eq('id',id);
+  if(error)return toast(error.message);
+  await loadAll()
+}
+function renderTx(){const month=$('txMonth').value,type=$('txTypeFilter').value,rows=transactions.filter(t=>monthKey(t.tx_date)===month&&(!type||t.tx_type===type));$('txBody').innerHTML=rows.map(t=>`<tr><td>${t.tx_date}</td><td>${t.tx_type==='income'?'수입':'지출'}</td><td>${t.category}</td><td>${t.target||'-'}</td><td class="${t.tx_type==='income'?'money-in':'money-out'}">${t.tx_type==='income'?'+':'-'} ${won(t.amount)}</td><td>${t.memo||'-'}</td><td>${t.source==='manual'?`<button class="btn blue small" onclick="openTx('${t.id}')">수정</button> <button class="btn red small" onclick="deleteTx('${t.id}')">삭제</button>`:`<span class="badge">${t.source==='fee'?'회비 자동':'게임비 자동'}</span>`}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">내역 없음</td></tr>'}
 function nextSundayFrom(date){const d=new Date((date||today())+'T12:00:00');const diff=(7-d.getDay())%7;d.setDate(d.getDate()+diff);return d.toISOString().slice(0,10)}
 async function createMeeting(){let base=meetings[0]?.meeting_date||today();if(meetings[0]){const d=new Date(base+'T12:00:00');d.setDate(d.getDate()+7);base=d.toISOString().slice(0,10)}const date=nextSundayFrom(base);const {error}=await sb.from('meetings').insert({meeting_date:date,status:'open'});if(error)return toast(error.code==='23505'?'이미 생성된 모임입니다.':error.message);toast('다음 모임 생성');await loadAll()}
 function renderSelects(){

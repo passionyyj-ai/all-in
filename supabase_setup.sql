@@ -379,3 +379,342 @@ exception when duplicate_object then null; end $$;
 insert into public.admin_users(user_id)
 select id from auth.users where email='admin@allin.club'
 on conflict do nothing;
+
+
+-- ===== V3.5 회비 다개월/연납 및 납부 수정 =====
+
+create table if not exists public.fee_payments (
+  id uuid primary key default gen_random_uuid(),
+  member_id uuid not null references public.members(id) on delete cascade,
+  start_month date not null,
+  months_count int not null check(months_count in (1,3,6,12)),
+  paid_date date not null,
+  amount numeric(12,0) not null check(amount>=0),
+  transaction_id uuid references public.transactions(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.fees
+  add column if not exists payment_id uuid references public.fee_payments(id) on delete set null;
+
+alter table public.fee_payments enable row level security;
+
+drop policy if exists admin_all on public.fee_payments;
+create policy admin_all on public.fee_payments
+for all to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+create or replace function public.admin_save_fee_payment(
+  p_payment_id uuid,
+  p_member_id uuid,
+  p_start_month date,
+  p_months_count int,
+  p_paid_date date
+)
+returns uuid
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  v_payment_id uuid;
+  v_tx_id uuid;
+  v_member public.members;
+  v_fee numeric;
+  v_amount numeric;
+  i int;
+  v_month date;
+begin
+  if not public.is_admin() then raise exception 'admin only'; end if;
+  if p_months_count not in (1,3,6,12) then raise exception 'invalid months_count'; end if;
+
+  select * into v_member from public.members where id=p_member_id;
+  if v_member.id is null then raise exception 'member not found'; end if;
+
+  select monthly_fee into v_fee from public.club_settings where id=1;
+  v_amount := v_fee * p_months_count;
+
+  if p_payment_id is not null then
+    select transaction_id into v_tx_id from public.fee_payments where id=p_payment_id for update;
+    if not found then raise exception 'payment not found'; end if;
+
+    update public.fees
+       set paid=false, paid_date=null, transaction_id=null, payment_id=null
+     where payment_id=p_payment_id;
+
+    if v_tx_id is not null then
+      delete from public.transactions where id=v_tx_id;
+    end if;
+
+    v_payment_id := p_payment_id;
+  else
+    v_payment_id := gen_random_uuid();
+  end if;
+
+  insert into public.transactions(tx_date,tx_type,category,target,amount,memo,source,ref_id)
+  values(
+    p_paid_date,
+    'income',
+    '회비',
+    v_member.name,
+    v_amount,
+    to_char(date_trunc('month',p_start_month),'YYYY-MM')||' 시작 '||p_months_count||'개월 회비',
+    'fee',
+    v_payment_id
+  )
+  returning id into v_tx_id;
+
+  insert into public.fee_payments(id,member_id,start_month,months_count,paid_date,amount,transaction_id)
+  values(v_payment_id,p_member_id,date_trunc('month',p_start_month)::date,p_months_count,p_paid_date,v_amount,v_tx_id)
+  on conflict(id) do update set
+    member_id=excluded.member_id,
+    start_month=excluded.start_month,
+    months_count=excluded.months_count,
+    paid_date=excluded.paid_date,
+    amount=excluded.amount,
+    transaction_id=excluded.transaction_id;
+
+  for i in 0..p_months_count-1 loop
+    v_month := (date_trunc('month',p_start_month) + make_interval(months=>i))::date;
+
+    if exists(
+      select 1 from public.fees
+      where member_id=p_member_id
+        and fee_month=v_month
+        and paid=true
+        and payment_id is distinct from v_payment_id
+    ) then
+      raise exception '% 월은 이미 납부 처리되어 있습니다.', to_char(v_month,'YYYY-MM');
+    end if;
+
+    insert into public.fees(member_id,fee_month,paid,paid_date,transaction_id,payment_id)
+    values(p_member_id,v_month,true,p_paid_date,v_tx_id,v_payment_id)
+    on conflict(member_id,fee_month) do update set
+      paid=true,
+      paid_date=p_paid_date,
+      transaction_id=v_tx_id,
+      payment_id=v_payment_id;
+  end loop;
+
+  return v_payment_id;
+end;
+$$;
+
+create or replace function public.admin_cancel_fee_payment(p_payment_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  v_tx_id uuid;
+begin
+  if not public.is_admin() then raise exception 'admin only'; end if;
+
+  select transaction_id into v_tx_id
+  from public.fee_payments
+  where id=p_payment_id
+  for update;
+
+  if not found then raise exception 'payment not found'; end if;
+
+  update public.fees
+     set paid=false,
+         paid_date=null,
+         transaction_id=null,
+         payment_id=null
+   where payment_id=p_payment_id;
+
+  delete from public.fee_payments where id=p_payment_id;
+
+  if v_tx_id is not null then
+    delete from public.transactions where id=v_tx_id;
+  end if;
+
+  return true;
+end;
+$$;
+
+grant execute on function public.admin_save_fee_payment(uuid,uuid,date,int,date) to authenticated;
+grant execute on function public.admin_cancel_fee_payment(uuid) to authenticated;
+
+
+-- ===== V3.6 멀티포지션 및 자동 팀 생성 개선 =====
+
+alter table public.members
+  add column if not exists positions text[];
+
+update public.members
+set positions = array[position]
+where positions is null or cardinality(positions)=0;
+
+alter table public.team_members
+  add column if not exists assigned_position text;
+
+create or replace function public.admin_create_member_v36(
+  p_name text,
+  p_age int,
+  p_phone text,
+  p_position text,
+  p_positions text[],
+  p_pin text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path=public,extensions
+as $$
+declare
+  new_id uuid;
+  valid_positions text[] := array['공격','토스','좌수비','우수비'];
+begin
+  if not public.is_admin() then raise exception 'admin only'; end if;
+  if p_pin !~ '^[0-9]{4}$' then raise exception 'PIN must be 4 digits'; end if;
+  if not (p_position = any(valid_positions)) then raise exception 'invalid primary position'; end if;
+  if p_positions is null or cardinality(p_positions)=0 then p_positions:=array[p_position]; end if;
+  if exists(select 1 from unnest(p_positions) p where not (p=any(valid_positions))) then
+    raise exception 'invalid position';
+  end if;
+  if not (p_position=any(p_positions)) then
+    p_positions:=array_prepend(p_position,p_positions);
+  end if;
+
+  insert into public.members(name,age,phone,position,positions,pin_hash)
+  values(p_name,p_age,p_phone,p_position,p_positions,extensions.crypt(p_pin,extensions.gen_salt('bf')))
+  returning id into new_id;
+  return new_id;
+end;
+$$;
+
+grant execute on function public.admin_create_member_v36(text,int,text,text,text[],text) to authenticated;
+
+create or replace function public.get_member_portal()
+returns jsonb
+language plpgsql security definer set search_path=public
+as $$
+declare m public.meetings; result jsonb;
+begin
+  select * into m from public.meetings
+  where status='open' and meeting_date>=current_date
+  order by meeting_date asc limit 1;
+  if m.id is null then
+    return jsonb_build_object('meeting',null,'members','[]'::jsonb,'attending_count',0);
+  end if;
+  select jsonb_build_object(
+    'meeting',jsonb_build_object('id',m.id,'date',m.meeting_date),
+    'members',coalesce(jsonb_agg(jsonb_build_object(
+      'id',x.id,'name',x.name,'position',x.position,
+      'positions',coalesce(x.positions,array[x.position]),
+      'attending',coalesce(a.attending,false)
+    ) order by x.name),'[]'::jsonb),
+    'attending_count',(select count(*) from public.attendance where meeting_id=m.id and attending)
+  ) into result
+  from public.members x
+  left join public.attendance a on a.meeting_id=m.id and a.member_id=x.id
+  where x.active;
+  return result;
+end $$;
+
+-- 멀티포지션 기반 완전 팀 수 최대화:
+-- 각 팀의 4개 포지션 슬롯을 순서대로 채우되,
+-- 후보 수가 적은 포지션을 먼저 배정하고 주포지션 일치자를 우선 사용.
+create or replace function public.admin_generate_teams(p_meeting_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  v_attendee_count int;
+  v_try_teams int;
+  v_team_no int;
+  v_team_id uuid;
+  v_position text;
+  v_member_id uuid;
+  v_success boolean;
+  v_assigned_count int;
+  v_created int := 0;
+begin
+  if not public.is_admin() then raise exception 'admin only'; end if;
+
+  delete from public.teams where meeting_id=p_meeting_id;
+
+  select count(*) into v_attendee_count
+  from public.attendance
+  where meeting_id=p_meeting_id and attending;
+
+  v_try_teams := floor(v_attendee_count/4.0);
+
+  for v_team_no in 1..v_try_teams loop
+    v_success := true;
+    insert into public.teams(meeting_id,team_no,team_name)
+    values(p_meeting_id,v_team_no,v_team_no||'팀')
+    returning id into v_team_id;
+
+    -- 현재 남은 참석자 기준 후보가 적은 포지션부터
+    for v_position in
+      select pos
+      from unnest(array['공격','토스','좌수비','우수비']) pos
+      order by (
+        select count(*)
+        from public.members m
+        join public.attendance a on a.member_id=m.id
+        where a.meeting_id=p_meeting_id
+          and a.attending
+          and pos=any(coalesce(m.positions,array[m.position]))
+          and not exists(
+            select 1 from public.team_members tm
+            join public.teams t on t.id=tm.team_id
+            where t.meeting_id=p_meeting_id and tm.member_id=m.id
+          )
+      ) asc
+    loop
+      select m.id into v_member_id
+      from public.members m
+      join public.attendance a on a.member_id=m.id
+      where a.meeting_id=p_meeting_id
+        and a.attending
+        and v_position=any(coalesce(m.positions,array[m.position]))
+        and not exists(
+          select 1 from public.team_members tm
+          join public.teams t on t.id=tm.team_id
+          where t.meeting_id=p_meeting_id and tm.member_id=m.id
+        )
+      order by
+        case when m.position=v_position then 0 else 1 end,
+        cardinality(coalesce(m.positions,array[m.position])) asc,
+        random()
+      limit 1;
+
+      if v_member_id is null then
+        v_success := false;
+        exit;
+      end if;
+
+      insert into public.team_members(team_id,member_id,assigned_position)
+      values(v_team_id,v_member_id,v_position);
+    end loop;
+
+    if not v_success then
+      delete from public.teams where id=v_team_id;
+      exit;
+    end if;
+
+    v_created := v_created + 1;
+  end loop;
+
+  select count(*) into v_assigned_count
+  from public.team_members tm
+  join public.teams t on t.id=tm.team_id
+  where t.meeting_id=p_meeting_id;
+
+  return jsonb_build_object(
+    'team_count',v_created,
+    'assigned_count',v_assigned_count,
+    'waiting_count',v_attendee_count-v_assigned_count
+  );
+end;
+$$;
+
+grant execute on function public.admin_generate_teams(uuid) to authenticated;

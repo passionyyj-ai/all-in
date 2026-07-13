@@ -19,7 +19,7 @@ async function loadPortal(silent=false){
 function renderMembers(){
   const q=$('memberSearch').value.trim();
   const rows=members.filter(m=>!q||m.name.includes(q));
-  $('memberList').innerHTML=rows.length?rows.map(m=>`<button class="member-pick ${selected?.id===m.id?'selected':''}" onclick="pickMember('${m.id}')"><b>${m.name}</b>${badge(m.position)}</button>`).join(''):'<div class="empty">검색 결과가 없습니다.</div>';
+  $('memberList').innerHTML=rows.length?rows.map(m=>`<button class="member-pick ${selected?.id===m.id?'selected':''}" onclick="pickMember('${m.id}')"><b>${m.name}</b>${((m.positions&&m.positions.length)?m.positions:[m.position]).map(p=>badge(p)).join('')}</button>`).join(''):'<div class="empty">검색 결과가 없습니다.</div>';
 }
 function pickMember(id){selected=members.find(m=>m.id===id);$('pin').value='';renderMembers();renderStatus();$('checkPanel').classList.remove('hidden')}
 function renderStatus(){

@@ -1,0 +1,73 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>올인 족구단 총무</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<div id="loginView" class="login-wrap"><div class="login-card"><div class="hero"><div class="ball">⚽</div><h1>총무 관리자</h1><p>Supabase 관리자 계정으로 로그인</p></div>
+<div class="stack"><input id="email" type="email" placeholder="관리자 이메일"><input id="password" type="password" placeholder="비밀번호"><button class="btn dark" onclick="login()">로그인</button></div>
+<div class="notice" style="margin-top:12px">관리자 계정은 Supabase Auth에서 생성하고 SQL 설정의 <b>admin_users</b>에 등록합니다.</div><a href="index.html" style="display:block;text-align:center;color:#6b7280;font-size:12px;margin-top:18px">회원 참석체크로 이동</a></div></div>
+
+<div id="appView" class="shell hidden">
+<header class="top"><div class="brand"><div><h1>⚽ 올인 족구단 · 총무</h1><small>회원 · 회비 · 참석 · 경기 통합관리</small></div><div class="top-actions"><button class="btn small" onclick="logout()">로그아웃</button></div></div></header>
+<main>
+<section id="dashboard" class="view active"><div id="kpis" class="grid g4"></div><div class="title"><h2>다가오는 일요일</h2><span id="nextMeetingDate"></span></div><div class="grid g2"><div class="card" id="meetingSummary"></div><div class="card"><div class="title" style="margin-top:0"><h2>최근 입출금</h2><span>최근 6건</span></div><div id="recentTx"></div></div></div></section>
+
+<section id="members" class="view"><div class="title"><h2>회원 명단</h2><button class="btn dark small" onclick="openMember()">+ 회원 추가</button></div><div class="card"><div class="toolbar"><input id="memberSearchAdmin" placeholder="회원 검색" oninput="renderMembers()"><select id="posFilter" onchange="renderMembers()"><option value="">전체 포지션</option><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div><div class="table-wrap"><table><thead><tr><th>이름</th><th>나이</th><th>연락처</th><th>포지션</th><th>PIN</th><th>관리</th></tr></thead><tbody id="memberBody"></tbody></table></div></div></section>
+
+<section id="finance" class="view"><div class="title"><h2>회비 · 비용</h2><button class="btn dark small" onclick="openTx()">+ 입출금 등록</button></div><div id="financeKpis" class="grid g4"></div><div class="title"><h2>회원별 월 회비</h2></div><div class="card"><div class="toolbar"><input type="month" id="feeMonth" onchange="renderFees()"><div class="row"><input type="number" id="feeAmount" min="0" step="1000" style="width:125px"><button class="btn small" onclick="saveFeeAmount()">회비 저장</button></div></div><div class="table-wrap"><table><thead><tr><th>회원</th><th>포지션</th><th>회비</th><th>상태</th><th>납부일</th><th>관리</th></tr></thead><tbody id="feeBody"></tbody></table></div></div><div class="title"><h2>일자별 입출금</h2></div><div class="card"><div class="toolbar"><input type="month" id="txMonth" onchange="renderTx()"><select id="txTypeFilter" onchange="renderTx()"><option value="">전체</option><option value="income">수입</option><option value="expense">지출</option></select></div><div class="table-wrap"><table><thead><tr><th>일자</th><th>구분</th><th>항목</th><th>회원/대상</th><th>금액</th><th>비고</th><th>관리</th></tr></thead><tbody id="txBody"></tbody></table></div></div></section>
+
+<section id="attendance" class="view"><div class="title"><h2>일요일 모임 · 참석</h2><button class="btn dark small" onclick="createMeeting()">+ 다음 모임 생성</button></div><div class="card"><div class="toolbar"><select id="meetingSelect" onchange="renderAttendance()"></select><button class="btn blue small" onclick="openAttendance()">총무 직접 수정</button></div><div id="attendanceSummary"></div></div><div class="title"><h2>포지션 자동 팀 편성</h2><span>팀당 4포지션 각 1명</span></div><div class="card"><div class="row"><button class="btn dark" onclick="generateTeams()">자동 팀 생성</button><button class="btn" onclick="generateTeams()">다시 섞기</button></div><div class="notice" style="margin-top:10px">공격·토스·좌수비·우수비 각 1명으로 완전한 팀을 우선 생성하고 남는 인원은 대기자로 분류합니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
+
+<section id="matchday" class="view">
+<div class="title"><h2>일요일 경기 운영 모드</h2><span>현장 진행용</span></div>
+<div class="card">
+  <div class="toolbar">
+    <select id="matchMeetingSelect" onchange="renderMatchday()"></select>
+    <button class="btn dark small" onclick="prepareMatchday()">운영 화면 새로고침</button>
+  </div>
+  <div id="matchdaySummary"></div>
+</div>
+<div class="title"><h2>오늘의 팀</h2><button class="btn dark small" onclick="generateTeams()">팀 다시 편성</button></div>
+<div class="card"><div id="matchdayTeams"></div></div>
+<div class="title"><h2>경기 진행</h2><button class="btn dark small" onclick="addGameFromMatchday()">+ 경기 추가</button></div>
+<div class="card"><div id="matchdayGames"></div></div>
+</section>
+
+<section id="games" class="view"><div class="title"><h2>경기 결과 · 게임비 청구</h2><button class="btn dark small" onclick="addGame()">+ 경기 추가</button></div><div class="card"><div class="toolbar"><select id="gameMeetingSelect" onchange="renderGames()"></select></div><div id="gameList"></div></div><div class="title"><h2>게임비 청구 현황</h2><span>패배 팀원 1인당 2,000원 · 수입 자동반영 안 함</span></div><div class="card" id="gameFeeSummary"></div></section>
+
+<section id="receivables" class="view">
+<div class="title"><h2>게임비 미수금 · 납부 관리</h2><span>실제 입금 확인 후 수입 반영</span></div>
+<div id="receivableKpis" class="grid g4"></div>
+<div class="card" style="margin-top:12px">
+  <div class="toolbar">
+    <select id="duesStatusFilter" onchange="renderReceivables()"><option value="">전체</option><option value="unpaid">미납</option><option value="paid">납부</option></select>
+    <input type="month" id="duesMonth" onchange="renderReceivables()">
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>발생일</th><th>회원</th><th>경기</th><th>청구액</th><th>상태</th><th>입금일</th><th>관리</th></tr></thead><tbody id="duesBody"></tbody></table></div>
+</div>
+</section>
+</main>
+<nav class="bottom"><div class="bottom-inner" style="grid-template-columns:repeat(6,1fr)">
+<button class="nav active" data-view="dashboard" onclick="go('dashboard')"><b>⌂</b>홈</button>
+<button class="nav" data-view="members" onclick="go('members')"><b>♙</b>회원</button>
+<button class="nav" data-view="finance" onclick="go('finance')"><b>₩</b>회비</button>
+<button class="nav" data-view="attendance" onclick="go('attendance')"><b>✓</b>참석</button>
+<button class="nav" data-view="matchday" onclick="go('matchday')"><b>⚽</b>운영</button>
+<button class="nav" data-view="receivables" onclick="go('receivables')"><b>◎</b>미수</button>
+</div></nav>
+</div>
+
+<div class="modal" id="memberModal"><div class="modal-card"><div class="modal-head"><h3 id="memberTitle">회원 추가</h3><button class="close" onclick="closeModal('memberModal')">×</button></div><input id="memberId" type="hidden"><div class="form-grid"><div class="field"><label>이름 *</label><input id="memberName"></div><div class="field"><label>나이</label><input id="memberAge" type="number"></div><div class="field"><label>연락처</label><input id="memberPhone" type="tel"></div><div class="field"><label>포지션 *</label><select id="memberPosition"><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div><div class="field"><label>참석 PIN *</label><input id="memberPin" type="password" inputmode="numeric" maxlength="4" placeholder="4자리 숫자"></div></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveMember()">저장</button></div></div>
+
+<div class="modal" id="txModal"><div class="modal-card"><div class="modal-head"><h3>입출금 등록</h3><button class="close" onclick="closeModal('txModal')">×</button></div><div class="form-grid"><div class="field"><label>일자 *</label><input id="txDate" type="date"></div><div class="field"><label>구분 *</label><select id="txType"><option value="income">수입</option><option value="expense">지출</option></select></div><div class="field"><label>항목 *</label><input id="txCategory"></div><div class="field"><label>회원/대상</label><input id="txTarget"></div><div class="field"><label>금액 *</label><input id="txAmount" type="number" min="0" step="1000"></div><div class="field"><label>비고</label><input id="txMemo"></div></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveTx()">등록</button></div></div>
+
+<div class="modal" id="attendanceModal"><div class="modal-card"><div class="modal-head"><h3>참석자 직접 수정</h3><button class="close" onclick="closeModal('attendanceModal')">×</button></div><div id="attendanceChecks" class="grid g2"></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveAttendance()">저장</button></div></div>
+<div class="modal" id="scoreModal"><div class="modal-card">
+<div class="modal-head"><h3>경기 점수 입력</h3><button class="close" onclick="closeModal('scoreModal')">×</button></div>
+<input id="scoreGameId" type="hidden">
+<div class="grid g2">
+<div class="field"><label id="scoreTeamALabel">A팀</label><input id="scoreA" type="number" min="0" inputmode="numeric"></div>
+<div class="field"><label id="scoreTeamBLabel">B팀</label><input id="scoreB" type="number" min="0" inputmode="numeric"></div>
+</div>
+<div class="notice" style="margin-top:10px">동점은 저장할 수 없습니다. 저장하면 승리팀과 패배팀이 자동 판정되고, 패배 팀원별 2,000원 게임비가 '미납 청구'로 생성됩니다.</div>
+<button class="btn dark" style="width:100%;margin-top:14px" onclick="saveScore()">점수 저장</button>
+</div></div>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="common.js"></script><script src="admin.js"></script></body></html>

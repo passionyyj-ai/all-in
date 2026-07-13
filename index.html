@@ -1,5 +1,11 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>올인 족구단</title><link rel="stylesheet" href="styles.css"></head>
-<body><div class="member-wrap"><div class="member-card">
+<body>
+<div id="memberLoginView" class="login-wrap"><div class="login-card">
+<div class="hero"><div class="ball">⚽</div><h1>올인 족구단</h1><p>회원 로그인</p></div>
+<div class="stack"><input id="memberLoginId" autocomplete="username" placeholder="아이디"><input id="memberLoginPw" type="password" autocomplete="current-password" placeholder="비밀번호"><button class="btn dark" onclick="memberLogin()">로그인</button></div>
+<div id="memberLoginError" style="color:#dc2626;font-size:13px;text-align:center;margin-top:10px"></div>
+</div></div>
+<div id="memberAppView" class="member-wrap hidden"><div class="member-card">
 <div class="hero"><div class="ball">⚽</div><h1>올인 족구단</h1><p>일요일 모임 참석 여부를 직접 체크하세요.</p></div>
 <div id="configWarn" class="notice hidden">Supabase 연결 전입니다. <b>config.js</b> 설정을 먼저 완료하세요.</div>
 <div id="meetingBox" class="meeting-box"><small>다가오는 모임</small><div class="date" id="meetingDate">불러오는 중...</div><div id="meetingMeta" style="margin-top:6px;color:#cbd5e1;font-size:13px"></div></div>

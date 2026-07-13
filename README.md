@@ -1,3 +1,18 @@
+# V3.1 로그인 정보
+
+- 회원 화면: `admin` / `1111`
+- 총무 화면: `admin` / `1111`
+
+## 총무 계정 1회 설정
+Supabase Dashboard → Authentication → Users → Add user:
+- Email: `admin@allin.club`
+- Password: `1111`
+- Auto Confirm User: ON
+
+그 다음 `supabase_setup.sql` 맨 아래 관리자 등록 SQL을 실행하세요.
+
+> 주의: GitHub Pages 공개 저장소에서 회원 로그인은 단순 접근 잠금입니다. 총무 권한은 Supabase Auth와 RLS가 별도로 확인합니다.
+
 # ⚽ 올인 족구단 v3
 
 GitHub Pages + Supabase 기반 모바일 웹앱입니다.

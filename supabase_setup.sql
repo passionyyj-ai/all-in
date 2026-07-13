@@ -374,3 +374,8 @@ exception when duplicate_object then null; end $$;
 -- insert into public.admin_users(user_id)
 -- select id from auth.users where email='YOUR_ADMIN_EMAIL@example.com'
 -- on conflict do nothing;
+
+-- V3.1 관리자 계정: Supabase Authentication > Users에서 admin@allin.club / 1111 생성 후 실행
+insert into public.admin_users(user_id)
+select id from auth.users where email='admin@allin.club'
+on conflict do nothing;

@@ -1,5 +1,8 @@
 let meeting=null, members=[], selected=null;
-async function init(){
+function memberLogin(){simpleLogin('member','memberLoginId','memberLoginPw','memberLoginError',()=>{showMemberApp();initPortal()})}
+function showMemberApp(){$('memberLoginView').classList.add('hidden');$('memberAppView').classList.remove('hidden')}
+async function init(){if(sessionStorage.getItem('allin_auth_member')==='ok'){showMemberApp();await initPortal()}}
+async function initPortal(){
   if(!requireConfig()){$('configWarn').classList.remove('hidden');$('meetingDate').textContent='연결 설정 필요';return}
   await loadPortal();
   sb.channel('member-portal').on('postgres_changes',{event:'*',schema:'public',table:'attendance'},()=>loadPortal(true)).on('postgres_changes',{event:'*',schema:'public',table:'meetings'},()=>loadPortal(true)).subscribe();

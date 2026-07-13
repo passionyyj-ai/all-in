@@ -10,3 +10,10 @@ function toast(msg){let el=$('toast');if(!el){el=document.createElement('div');e
 function configured(){return CFG.SUPABASE_URL && !CFG.SUPABASE_URL.includes('YOUR_') && CFG.SUPABASE_PUBLISHABLE_KEY && !CFG.SUPABASE_PUBLISHABLE_KEY.includes('YOUR_')}
 const sb = configured() ? supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_PUBLISHABLE_KEY) : null;
 function requireConfig(){if(!sb){alert('config.js에 Supabase URL과 Publishable key를 입력하세요.');return false}return true}
+
+const ALLIN_LOGIN={username:'admin',password:'1111'};
+function simpleLogin(scope,userId,passId,errorId,onSuccess){
+ const u=$(userId).value.trim(),p=$(passId).value;
+ if(u===ALLIN_LOGIN.username&&p===ALLIN_LOGIN.password){sessionStorage.setItem('allin_auth_'+scope,'ok');if($(errorId))$(errorId).textContent='';onSuccess();}
+ else if($(errorId))$(errorId).textContent='아이디 또는 비밀번호가 올바르지 않습니다.';
+}

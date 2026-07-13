@@ -7,8 +7,11 @@ async function init(){
   sb.auth.onAuthStateChange((_e,s)=>{if(!s){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}});
 }
 async function login(){
-  if(!requireConfig())return;const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
-  if(error)return toast('로그인 실패: '+error.message);await enterApp();
+ if(!requireConfig())return;
+ if($('email').value.trim()!=='admin'||$('password').value!=='1111')return toast('아이디 또는 비밀번호가 올바르지 않습니다.');
+ const {error}=await sb.auth.signInWithPassword({email:'admin@allin.club',password:'1111'});
+ if(error)return toast('Supabase 관리자 계정 설정이 필요합니다. README를 확인하세요.');
+ await enterApp();
 }
 async function logout(){await sb.auth.signOut();location.reload()}
 async function enterApp(){

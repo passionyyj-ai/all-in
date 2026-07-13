@@ -21,21 +21,38 @@
     <div class="notice" style="margin-top:10px"><b>포지션 균형</b>: 공격·토스·좌수비·우수비를 고려합니다.<br><b>완전 랜덤</b>: 포지션과 관계없이 참석자를 무작위로 4명씩 배정하고 남는 인원은 대기자로 분류합니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
 
 <section id="matchday" class="view">
-<div class="title"><h2>일요일 경기 운영 모드</h2><span>현장 진행용</span></div>
+<div class="title"><h2>일요일 경기 운영</h2><span>최대 4팀 편성 → 경기 → 패배팀 게임비 → 재편성</span></div>
 <div class="card">
   <div class="toolbar">
     <select id="matchMeetingSelect" onchange="renderMatchday()"></select>
-    <button class="btn dark small" onclick="prepareMatchday()">운영 화면 새로고침</button>
+    <button class="btn small" onclick="prepareMatchday()">새로고침</button>
   </div>
   <div id="matchdaySummary"></div>
 </div>
-<div class="title"><h2>오늘의 팀</h2><div class="row"><button class="btn dark small" onclick="generateTeams('balanced')">균형 편성</button><button class="btn blue small" onclick="generateTeams('random')">랜덤 편성</button></div></div>
-<div class="card"><div id="matchdayTeams"></div></div>
-<div class="title"><h2>경기 진행</h2><button class="btn dark small" onclick="addGameFromMatchday()">+ 경기 추가</button></div>
-<div class="card"><div id="matchdayGames"></div></div>
+
+<div class="title"><h2>1. 팀 편성</h2><span id="teamGenerationStatus"></span></div>
+<div class="card">
+  <div class="row">
+    <button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 편성</button>
+    <button class="btn blue" onclick="generateTeams('random')">완전 랜덤 편성</button>
+  </div>
+  <div class="notice" style="margin-top:10px">진행 중인 시리즈가 있으면 팀을 다시 편성할 수 없습니다. 시리즈 종료 후 패배팀 게임비가 자동 청구되면 다음 팀 편성이 가능합니다.</div>
+  <div id="matchdayTeams" style="margin-top:12px"></div>
+</div>
+
+<div class="title"><h2>2. 시리즈 시작</h2><span>게임별 3판 2승제 / 5판 3승제</span></div>
+<div class="card">
+  <div id="seriesStartArea"></div>
+</div>
+
+<div class="title"><h2>3. 시리즈 경기 진행</h2><span>세트 점수 입력</span></div>
+<div class="card"><div id="seriesArea"></div></div>
+
+<div class="title"><h2>4. 종료된 시리즈</h2><span>일반 패배 또는 콜드패 게임비 청구</span></div>
+<div class="card"><div id="seriesHistory"></div></div>
 </section>
 
-<section id="games" class="view"><div class="title"><h2>경기 결과 · 게임비 청구</h2><button class="btn dark small" onclick="addGame()">+ 경기 추가</button></div><div class="card"><div class="toolbar"><select id="gameMeetingSelect" onchange="renderGames()"></select></div><div id="gameList"></div></div><div class="title"><h2>게임비 청구 현황</h2><span>패배 팀원 1인당 2,000원 · 수입 자동반영 안 함</span></div><div class="card" id="gameFeeSummary"></div></section>
+<section id="games" class="view"><div class="title"><h2>기존 단판 경기 기록</h2><button class="btn dark small" onclick="addGame()">+ 경기 추가</button></div><div class="card"><div class="toolbar"><select id="gameMeetingSelect" onchange="renderGames()"></select></div><div id="gameList"></div></div><div class="title"><h2>게임비 청구 현황</h2><span>패배 팀원 1인당 2,000원 · 수입 자동반영 안 함</span></div><div class="card" id="gameFeeSummary"></div></section>
 
 <section id="receivables" class="view">
 <div class="title"><h2>게임비 미수금 · 납부 관리</h2><span>일반 패배 2,000원 · 8점차 콜드게임 4,000원</span></div>
@@ -64,15 +81,15 @@
 <div class="modal" id="txModal"><div class="modal-card"><div class="modal-head"><h3 id="txModalTitle">입출금 등록</h3><button class="close" onclick="closeModal('txModal')">×</button></div><input id="txId" type="hidden"><div class="form-grid"><div class="field"><label>일자 *</label><input id="txDate" type="date"></div><div class="field"><label>구분 *</label><select id="txType"><option value="income">수입</option><option value="expense">지출</option></select></div><div class="field"><label>항목 *</label><input id="txCategory"></div><div class="field"><label>회원/대상</label><input id="txTarget"></div><div class="field"><label>금액 *</label><input id="txAmount" type="number" min="0" step="1000"></div><div class="field"><label>비고</label><input id="txMemo"></div></div><button id="txSaveBtn" class="btn dark" style="width:100%;margin-top:14px" onclick="saveTx()">등록</button></div></div>
 
 <div class="modal" id="attendanceModal"><div class="modal-card"><div class="modal-head"><h3>참석자 직접 수정</h3><button class="close" onclick="closeModal('attendanceModal')">×</button></div><div id="attendanceChecks" class="grid g2"></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveAttendance()">저장</button></div></div>
-<div class="modal" id="scoreModal"><div class="modal-card">
-<div class="modal-head"><h3>경기 점수 입력</h3><button class="close" onclick="closeModal('scoreModal')">×</button></div>
-<input id="scoreGameId" type="hidden">
+<div class="modal" id="seriesSetModal"><div class="modal-card">
+<div class="modal-head"><h3 id="seriesSetTitle">세트 점수 입력</h3><button class="close" onclick="closeModal('seriesSetModal')">×</button></div>
+<input id="seriesSetId" type="hidden">
 <div class="grid g2">
-<div class="field"><label id="scoreTeamALabel">A팀</label><input id="scoreA" type="number" min="0" inputmode="numeric"></div>
-<div class="field"><label id="scoreTeamBLabel">B팀</label><input id="scoreB" type="number" min="0" inputmode="numeric"></div>
+  <div class="field"><label id="seriesTeamALabel">A팀</label><input id="seriesScoreA" type="number" min="0" inputmode="numeric"></div>
+  <div class="field"><label id="seriesTeamBLabel">B팀</label><input id="seriesScoreB" type="number" min="0" inputmode="numeric"></div>
 </div>
-<div class="notice" style="margin-top:10px">동점은 저장할 수 없습니다. 저장하면 승리팀과 패배팀이 자동 판정되고, 패배 팀원별 2,000원 게임비가 '미납 청구'로 생성됩니다.</div>
-<button class="btn dark" style="width:100%;margin-top:14px" onclick="saveScore()">점수 저장</button>
+<div class="notice" style="margin-top:10px">동점은 저장할 수 없습니다. 한 팀이 2승 또는 3승에 도달하면 시리즈가 종료됩니다. 일반 게임은 최종 패배팀이 1인당 2,000원을 부담합니다. 세트 점수가 정확히 8:0이면 즉시 콜드패로 시리즈가 종료되고, 0점 팀은 1인당 4,000원을 부담합니다. 종료 후 팀을 다시 편성합니다.</div>
+<button class="btn dark" style="width:100%;margin-top:14px" onclick="saveSeriesSet()">세트 점수 저장</button>
 </div></div>
 <div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="common.js"></script><script src="admin.js"></script></body></html>

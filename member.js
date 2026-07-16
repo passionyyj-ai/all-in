@@ -63,12 +63,34 @@ function renderMyStatus(){
   if(!mine||mine.attending===null||typeof mine.attending==='undefined')$('currentStatus').innerHTML=`<div class="status pending">${loginMember.name}님 · 아직 참석 여부를 선택하지 않았습니다.</div>`;
   else $('currentStatus').innerHTML=mine.attending?`<div class="status yes">${loginMember.name}님 · 참석으로 체크됨 ✓</div>`:`<div class="status no">${loginMember.name}님 · 불참으로 체크됨</div>`;
 }
+let attendanceSaving=false;
 async function setAttendance(attending){
+  if(attendanceSaving)return;
   if(!meeting||!loginMember)return toast('현재 개설된 모임이 없습니다.');
-  const {data,error}=await sb.rpc('set_my_attendance',{p_meeting_id:meeting.id,p_member_id:loginMember.id,p_pin:loginPin,p_attending:attending});
-  if(error){console.error(error);return toast('처리 중 오류가 발생했습니다.')}
-  if(!data?.ok)return toast(data?.message||'PIN을 확인하세요.');
-  toast(attending?'참석 체크 완료!':'불참으로 변경했습니다.');await loadPortal(true);
+
+  attendanceSaving=true;
+  document.querySelectorAll('#checkPanel button').forEach(btn=>btn.disabled=true);
+
+  try{
+    const {data,error}=await sb.rpc('set_my_attendance',{
+      p_meeting_id:meeting.id,
+      p_member_id:loginMember.id,
+      p_pin:loginPin,
+      p_attending:attending
+    });
+
+    if(error){
+      console.error('set_my_attendance error',error);
+      return toast(error.message||'참석 여부 저장 중 오류가 발생했습니다.');
+    }
+    if(!data?.ok)return toast(data?.message||'참석 여부를 저장하지 못했습니다.');
+
+    toast(attending?'참석 체크 완료!':'불참으로 변경했습니다.');
+    await loadPortal(true);
+  }finally{
+    attendanceSaving=false;
+    document.querySelectorAll('#checkPanel button').forEach(btn=>btn.disabled=false);
+  }
 }
 init();
 

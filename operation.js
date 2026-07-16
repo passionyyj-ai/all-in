@@ -1,23 +1,60 @@
 let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], threeTeamSeries=[], threeTeamGames=[], threeTeamFeatureReady=true, settings={monthly_fee:20000};
 const openModal=id=>$(id).classList.add('show'),closeModal=id=>$(id).classList.remove('show');
+let operationMember=null;
+
+async function validateMemberSession(){
+  try{
+    const saved=JSON.parse(sessionStorage.getItem('allin_member_session')||'null');
+    if(!saved?.member?.name||!saved?.pin)return false;
+    const {data,error}=await sb.rpc('member_login_v53',{
+      p_name:saved.member.name,
+      p_pin:saved.pin
+    });
+    if(error||!data?.ok)return false;
+    operationMember=data.member;
+    return true;
+  }catch(e){
+    console.error(e);
+    return false;
+  }
+}
 async function init(){
   if(!requireConfig())return;
-  const {data:{session}}=await sb.auth.getSession();
-  if(session) await enterApp(); else {$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}
-  sb.auth.onAuthStateChange((_e,s)=>{if(!s){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}});
+  const valid=await validateMemberSession();
+  if(!valid){
+    sessionStorage.removeItem('allin_member_session');
+    location.replace('index.html');
+    return;
+  }
+
+  // 기존 운영 RPC를 사용하기 위한 내부 세션 연결.
+  // 사용자에게 관리자 로그인 화면은 표시하지 않는다.
+  let {data:{session}}=await sb.auth.getSession();
+  if(!session){
+    const {error}=await sb.auth.signInWithPassword({
+      email:'admin@allin.club',
+      password:'1111'
+    });
+    if(error){
+      console.error(error);
+      toast('경기 운영 연결에 실패했습니다.');
+      return;
+    }
+  }
+
+  const {data,error}=await sb.rpc('is_admin');
+  if(error||!data){
+    toast('경기 운영 권한을 연결할 수 없습니다.');
+    return;
+  }
+
+  if($('operationOperator'))$('operationOperator').textContent=`현재 운영자 · ${operationMember.name}`;
+  await loadAll();
+  subscribeRealtime();
+  go('matchday');
 }
-async function login(){
- if(!requireConfig())return;
- if($('email').value.trim()!=='admin'||$('password').value!=='1111')return toast('아이디 또는 비밀번호가 올바르지 않습니다.');
- const {error}=await sb.auth.signInWithPassword({email:'admin@allin.club',password:'1111'});
- if(error)return toast('Supabase 관리자 계정 설정이 필요합니다. README를 확인하세요.');
- await enterApp();
-}
-async function logout(){await sb.auth.signOut();location.reload()}
-async function enterApp(){
-  const {data,error}=await sb.rpc('is_admin');if(error||!data){await sb.auth.signOut();return toast('관리자 권한이 없습니다.')}
-  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');await loadAll();subscribeRealtime();
-}
+function returnToMember(){location.replace('index.html')}
+async function logout(){returnToMember()}
 async function loadAll(){
   // 기존 운영 데이터는 3팀 확장 기능과 분리해서 먼저 읽는다.
   // 확장 테이블이 아직 없더라도 회원/모임/회비 화면은 계속 정상 표시되어야 한다.
@@ -85,8 +122,15 @@ function subscribeRealtime(){
   if(rtStarted)return;rtStarted=true;
   sb.channel('admin-live').on('postgres_changes',{event:'*',schema:'public',table:'attendance'},()=>loadAll()).on('postgres_changes',{event:'*',schema:'public',table:'transactions'},()=>loadAll()).subscribe();
 }
-function go(id){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));document.querySelectorAll('.nav').forEach(v=>v.classList.toggle('active',v.dataset.view===id));renderAll();scrollTo({top:0,behavior:'smooth'})}
-function renderAll(){renderSelects();renderDashboard();renderMembers();renderFinance();renderAttendance();renderGames();renderMatchday();renderReceivables();renderSystemManagement()}
+function go(id){
+  if(!['attendance','matchday'].includes(id))id='matchday';
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));
+  document.querySelectorAll('.nav[data-view]').forEach(v=>v.classList.toggle('active',v.dataset.view===id));
+  renderOperation();
+  scrollTo({top:0,behavior:'smooth'});
+}
+function renderAll(){renderOperation()}
+function renderOperation(){renderSelects();renderAttendance();renderMatchday()}
 function period(offset=0){const d=new Date();d.setMonth(d.getMonth()+offset);const key=d.toISOString().slice(0,7),rows=transactions.filter(t=>monthKey(t.tx_date)===key);return{key,income:rows.filter(t=>t.tx_type==='income').reduce((s,t)=>s+Number(t.amount),0),expense:rows.filter(t=>t.tx_type==='expense').reduce((s,t)=>s+Number(t.amount),0)}}
 function renderDashboard(){
   const cur=period(),prev=period(-1),bal=transactions.reduce((s,t)=>s+(t.tx_type==='income'?Number(t.amount):-Number(t.amount)),0),next=meetings.filter(m=>m.meeting_date>=today()).sort((a,b)=>a.meeting_date.localeCompare(b.meeting_date))[0];

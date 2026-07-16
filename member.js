@@ -74,8 +74,7 @@ init();
 
 function openDelegateAdmin(){
   if(!loginMember||!loginPin)return toast('회원 로그인이 필요합니다.');
-  if(!confirm('경기 운영 화면으로 이동할까요?\n참석 관리와 경기 운영 기능만 사용할 수 있습니다.'))return;
-  location.href='admin.html?mode=operation&from=member';
+  location.href='operation.html';
 }
 
 async function loadMemberDashboard(){

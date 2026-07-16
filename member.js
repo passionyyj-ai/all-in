@@ -14,6 +14,24 @@ async function memberLogin(){
   $('memberLoginError').textContent='';showMemberApp();await initPortal();
 }
 function showLoginError(msg){$('memberLoginError').textContent=msg}
+function memberLogout(){
+  sessionStorage.removeItem('allin_member_session');
+  loginMember=null;
+  loginPin='';
+  meeting=null;
+  members=[];
+  const pw=$('memberLoginPw');
+  const err=$('memberLoginError');
+  const app=$('memberAppView');
+  const login=$('memberLoginView');
+  if(pw)pw.value='';
+  if(err)err.textContent='';
+  if(app)app.classList.add('hidden');
+  if(login)login.classList.remove('hidden');
+  const id=$('memberLoginId');
+  if(id)id.focus();
+}
+
 function showMemberApp(){$('memberLoginView').classList.add('hidden');$('memberAppView').classList.remove('hidden');$('loginMemberName').textContent=loginMember?.name||''}
 async function init(){
   try{const saved=JSON.parse(sessionStorage.getItem('allin_member_session')||'null');if(saved?.member&&saved?.pin){loginMember=saved.member;loginPin=saved.pin;showMemberApp();await initPortal()}}catch(e){}

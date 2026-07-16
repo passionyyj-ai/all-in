@@ -188,3 +188,33 @@ body{
 .attendance-group-title{font-size:13px;font-weight:800;margin-bottom:8px}.attendance-names{display:flex;gap:6px;flex-wrap:wrap}.attendance-names span{font-size:12px;font-weight:700;background:#f3f4f6;border-radius:999px;padding:5px 9px}.attendance-names em{font-size:12px;color:#9ca3af;font-style:normal}
 .status.pending{background:#fef3c7;color:#92400e}
 @media(max-width:520px){.attendance-summary{grid-template-columns:repeat(3,1fr)}.attendance-kpi{padding:10px 6px}.attendance-kpi b{font-size:21px}}
+
+.member-session-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:12px;
+  background:rgba(255,255,255,.07);
+  color:#d1d5db;
+  font-size:13px
+}
+.member-logout-btn{
+  flex:0 0 auto;
+  border:1px solid rgba(255,255,255,.24);
+  border-radius:9px;
+  padding:8px 12px;
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font:inherit;
+  font-weight:800;
+  cursor:pointer
+}
+.member-logout-btn:hover{background:rgba(255,255,255,.18)}
+.standalone-logout{margin-top:10px}
+@media(max-width:520px){
+  .member-session-bar{align-items:flex-start}
+  .member-logout-btn{padding:7px 10px;font-size:12px}
+}

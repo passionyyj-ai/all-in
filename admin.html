@@ -1,9 +1,9 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>올인 족구단 총무</title><link rel="stylesheet" href="styles.css?v=5.4.0"><link rel="manifest" href="/all-in/manifest-admin.webmanifest?v=5.4.0">
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>올인 족구단 총무</title><link rel="stylesheet" href="styles.css?v=5.5.0"><link rel="manifest" href="/all-in/manifest-admin.webmanifest?v=5.5.0">
 <meta name="theme-color" content="#080b10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ALLIN 총무">
-<link rel="apple-touch-icon" href="/all-in/icon-admin-192.png?v=5.4.0">
+<link rel="apple-touch-icon" href="/all-in/icon-admin-192.png?v=5.5.0">
 </head>
 <body>
 <div id="loginView" class="login-wrap"><div class="login-card"><div class="hero"><img class="club-logo" src="allin-logo.png" alt="ALLIN JOKGUCLUB 로고"><h1>총무 관리자</h1><div class="club-subtitle">ALLIN JOKGUCLUB · 2023</div><p>클럽 관리 시스템</p></div>
@@ -65,15 +65,15 @@
   <div id="matchdayTeams" style="margin-top:12px"></div>
 </div>
 
-<div class="title"><h2>2. 시리즈 시작</h2><span>게임별 3판 2승제 / 5판 3승제</span></div>
+<div class="title"><h2>2. 시리즈 시작</h2><span>2팀: 다전제 · 3팀: 단판 승자연전</span></div>
 <div class="card">
   <div id="seriesStartArea"></div>
 </div>
 
-<div class="title"><h2>3. 시리즈 경기 진행</h2><span>세트 점수 입력</span></div>
+<div class="title"><h2>3. 시리즈 경기 진행</h2><span>팀 수에 맞는 경기 방식 자동 적용</span></div>
 <div class="card"><div id="seriesArea"></div></div>
 
-<div class="title"><h2>4. 종료된 시리즈</h2><span>일반 패배 또는 콜드패 게임비 청구</span></div>
+<div class="title"><h2>4. 종료된 시리즈</h2><span>최종 패배팀 게임비 자동 청구</span></div>
 <div class="card"><div id="seriesHistory"></div></div>
 </section>
 
@@ -158,6 +158,21 @@
 </div></div>
 
 <div class="modal" id="attendanceModal"><div class="modal-card"><div class="modal-head"><h3>참석자 직접 수정</h3><button class="close" onclick="closeModal('attendanceModal')">×</button></div><div id="attendanceChecks" class="grid g2"></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveAttendance()">저장</button></div></div>
+
+<div class="modal" id="threeTeamScoreModal"><div class="modal-card">
+  <div class="modal-head"><h3 id="threeTeamScoreTitle">3팀 단판 점수 입력</h3><button class="close" onclick="closeModal('threeTeamScoreModal')">×</button></div>
+  <input id="threeTeamSeriesId" type="hidden">
+  <div class="grid g2">
+    <div class="field"><label id="threeTeamALabel">팀 A</label><input id="threeTeamScoreA" type="number" min="0" inputmode="numeric"></div>
+    <div class="field"><label id="threeTeamBLabel">팀 B</label><input id="threeTeamScoreB" type="number" min="0" inputmode="numeric"></div>
+  </div>
+  <div class="notice" style="margin-top:10px">
+    모든 경기는 단판입니다. 최초 회차에서 종료되면 최종 패배팀은 1인당 2,000원,
+    1:1:1 초기화가 한 번이라도 발생한 뒤 종료되면 1인당 4,000원이 청구됩니다.
+  </div>
+  <button class="btn dark" style="width:100%;margin-top:14px" onclick="saveThreeTeamGame()">단판 결과 저장</button>
+</div></div>
+
 <div class="modal" id="seriesSetModal"><div class="modal-card">
 <div class="modal-head"><h3 id="seriesSetTitle">세트 점수 입력</h3><button class="close" onclick="closeModal('seriesSetModal')">×</button></div>
 <input id="seriesSetId" type="hidden">
@@ -178,5 +193,5 @@
 </div></div>
 
 <div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.4.0"></script><script src="common.js?v=5.4.0"></script><script src="admin.js?v=5.4.0"></script><script src="pwa-admin.js?v=5.4.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.5.0"></script><script src="common.js?v=5.5.0"></script><script src="admin.js?v=5.5.0"></script><script src="pwa-admin.js?v=5.5.0"></script>
 </body></html>

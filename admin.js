@@ -485,7 +485,9 @@ function renderReceivables(){
   if(status==='unpaid')rows=rows.filter(x=>x.unpaid>0);
   if(status==='paid')rows=rows.filter(x=>x.paid>0);
   const total=rows.reduce((s,x)=>s+x.total,0),unpaid=rows.reduce((s,x)=>s+x.unpaid,0),paid=rows.reduce((s,x)=>s+x.paid,0);
-  $('receivableKpis').innerHTML=[['청구액',won(total)],['게임비 잔액',won(unpaid)],['납부액',won(paid)],['게임 횟수',rows.reduce((s,x)=>s+x.unpaidCount,0)+'건']].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+  const gameRows=status==='unpaid'?monthRows.filter(d=>d.status==='unpaid'):status==='paid'?monthRows.filter(d=>d.status==='paid'):monthRows;
+  const actualGameCount=new Set(gameRows.map(d=>d.series_id||d.game_id).filter(Boolean)).size;
+  $('receivableKpis').innerHTML=[['청구액',won(total)],['게임비 잔액',won(unpaid)],['납부액',won(paid)],['게임 횟수',actualGameCount+'경기']].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
   $('duesBody').innerHTML=rows.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr>
     <td><b>${x.name}</b></td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td>
     <td class="${x.unpaid>0?'money-out':''}"><b>${won(x.unpaid)}</b></td><td>${x.unpaidCount}건</td>

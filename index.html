@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>올인 족구단</title><link rel="stylesheet" href="styles.css?v=5.2.0"><link rel="manifest" href="/all-in/allin-manifest-v520.webmanifest">
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>올인 족구단</title><link rel="stylesheet" href="styles.css?v=5.3.2"><link rel="manifest" href="/all-in/allin-manifest-v530.webmanifest">
 <meta name="theme-color" content="#080b10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -7,24 +7,21 @@
 <body>
 <div id="memberLoginView" class="login-wrap"><div class="login-card">
 <div class="hero"><img class="club-logo" src="allin-logo.png" alt="ALLIN JOKGUCLUB 로고"><h1>올인 족구단</h1><div class="club-subtitle">ALLIN JOKGUCLUB · 2023</div><p>회원 로그인</p></div>
-<div class="stack"><input id="memberLoginId" autocomplete="username" placeholder="아이디"><input id="memberLoginPw" type="password" autocomplete="current-password" placeholder="비밀번호"><button class="btn dark" onclick="memberLogin()">로그인</button></div>
+<div class="stack"><input id="memberLoginId" autocomplete="username" placeholder="회원 이름"><input id="memberLoginPw" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="개인 4자리 PIN"><button class="btn dark" onclick="memberLogin()">로그인</button></div>
 <div id="memberLoginError" style="color:#dc2626;font-size:13px;text-align:center;margin-top:10px"></div>
 </div></div>
 <div id="memberAppView" class="member-wrap hidden"><div class="member-card">
 <div class="hero"><img class="club-logo" src="allin-logo.png" alt="ALLIN JOKGUCLUB 로고"><h1>올인 족구단</h1><div class="club-subtitle">ALLIN JOKGUCLUB · 2023</div><p>일요일 모임 참석 여부를 직접 체크하세요.</p></div>
 <div id="configWarn" class="notice hidden">Supabase 연결 전입니다. <b>config.js</b> 설정을 먼저 완료하세요.</div>
 <div id="meetingBox" class="meeting-box"><small>다가오는 모임</small><div class="date" id="meetingDate">불러오는 중...</div><div id="meetingMeta" style="margin-top:6px;color:#cbd5e1;font-size:13px"></div></div>
-<div class="field"><label>내 이름 선택</label><input id="memberSearch" placeholder="이름 검색" autocomplete="off"></div>
-<div id="memberList" class="member-list" style="margin-top:8px"></div>
+<div id="attendanceSummary" class="attendance-summary"></div>
+<div id="attendancePeople" class="attendance-people"></div>
 <div id="checkPanel" class="hidden" style="margin-top:14px">
   <div id="currentStatus"></div>
-  <div class="stack" style="margin-top:10px"><input id="pin" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="나의 4자리 참석 PIN">
-  <div class="row"><button class="btn green" style="flex:1" onclick="setAttendance(true)">참석</button><button class="btn red" style="flex:1" onclick="setAttendance(false)">불참</button></div></div>
+  <div class="row" style="margin-top:10px"><button class="btn green" style="flex:1" onclick="setAttendance(true)">참석</button><button class="btn red" style="flex:1" onclick="setAttendance(false)">불참</button></div>
 </div>
-<div class="notice" style="margin-top:14px">회원 이름을 선택하고 개인 4자리 PIN으로 본인 참석 여부만 변경할 수 있습니다.</div>
-<div class="title" style="margin-top:20px"><h2>클럽 현황 대시보드</h2><span>조회 전용</span></div>
-<div id="memberDashboardKpis" class="grid g2"></div>
-<div class="title"><h2>회비 입금 현황</h2><input id="memberDashMonth" type="month" onchange="loadMemberDashboard()"></div>
+<div class="notice" style="margin-top:14px"><b id="loginMemberName"></b>님의 참석 여부만 변경할 수 있습니다.</div>
+<div class="title" style="margin-top:20px"><h2>회비 입금 현황</h2><input id="memberDashMonth" type="month" onchange="loadMemberDashboard()"></div>
 <div class="card dashboard-readonly"><div id="feeDashboard"></div></div>
 <div class="title"><h2>수입 · 지출 현황</h2></div>
 <div class="card dashboard-readonly"><div id="cashDashboard"></div></div>
@@ -33,5 +30,5 @@
 
 <a href="admin.html" style="display:block;text-align:center;color:#6b7280;font-size:12px;margin-top:18px">총무 관리자</a>
 </div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.2.0"></script><script src="common.js?v=5.2.0"></script><script src="member.js?v=5.2.0"></script><script src="pwa.js?v=5.2.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.3.2"></script><script src="common.js?v=5.3.2"></script><script src="member.js?v=5.3.2"></script><script src="pwa.js?v=5.3.2"></script>
 </body></html>

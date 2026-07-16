@@ -1,6 +1,22 @@
+
+async function purgeOldAdminCachesV573(){
+  try{
+    const key='allin_admin_cache_purged_v573';
+    if(localStorage.getItem(key))return;
+    if('caches' in window){
+      const names=await caches.keys();
+      await Promise.all(names.filter(n=>n!=='allin-v5.7.3').map(n=>caches.delete(n)));
+    }
+    localStorage.setItem(key,'1');
+  }catch(e){
+    console.warn('cache purge skipped',e);
+  }
+}
+
 let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], threeTeamSeries=[], threeTeamGames=[], threeTeamFeatureReady=true, settings={monthly_fee:20000};
 const openModal=id=>$(id).classList.add('show'),closeModal=id=>$(id).classList.remove('show');
 async function init(){
+  await purgeOldAdminCachesV573();
   if(!requireConfig())return;
   const {data:{session}}=await sb.auth.getSession();
   if(session) await enterApp(); else {$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}

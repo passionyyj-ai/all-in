@@ -1,4 +1,4 @@
-let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], threeTeamSeries=[], threeTeamGames=[], settings={monthly_fee:20000};
+let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], threeTeamSeries=[], threeTeamGames=[], threeTeamFeatureReady=true, settings={monthly_fee:20000};
 const openModal=id=>$(id).classList.add('show'),closeModal=id=>$(id).classList.remove('show');
 async function init(){
   if(!requireConfig())return;
@@ -19,7 +19,9 @@ async function enterApp(){
   $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');await loadAll();subscribeRealtime();
 }
 async function loadAll(){
-  const queries=await Promise.all([
+  // 기존 운영 데이터는 3팀 확장 기능과 분리해서 먼저 읽는다.
+  // 확장 테이블이 아직 없더라도 회원/모임/회비 화면은 계속 정상 표시되어야 한다.
+  const coreQueries=await Promise.all([
     sb.from('members').select('*').order('name'),
     sb.from('meetings').select('*').order('meeting_date',{ascending:false}),
     sb.from('attendance').select('*'),
@@ -32,29 +34,50 @@ async function loadAll(){
     sb.from('game_dues').select('*').order('due_date',{ascending:false}),
     sb.from('match_series').select('*').order('created_at',{ascending:false}),
     sb.from('series_sets').select('*').order('set_no',{ascending:true}),
-    sb.from('three_team_series').select('*').order('created_at',{ascending:false}),
-    sb.from('three_team_games').select('*').order('game_no',{ascending:true}),
     sb.from('club_settings').select('*').eq('id',1).maybeSingle()
   ]);
-  const coreIndexes=[0,1,2,3,4,5,6,8,9,10,11,12,13,14];
-  const coreError=coreIndexes.map(i=>queries[i]?.error).find(Boolean);
-  if(coreError){console.error(queries.map(q=>q.error));return toast('데이터 로드 오류: '+coreError.message)}
-  members=queries[0].data||[];
-  meetings=queries[1].data||[];
-  attendance=queries[2].data||[];
-  teams=queries[3].data||[];
-  teamMembers=queries[4].data||[];
-  transactions=queries[5].data||[];
-  fees=queries[6].data||[];
-  feePayments=queries[7].error?[]:(queries[7].data||[]);
-  if(queries[7].error)console.warn('fee_payments load warning',queries[7].error);
-  games=queries[8].data||[];
-  gameDues=queries[9].data||[];
-  matchSeries=queries[10].data||[];
-  seriesSets=queries[11].data||[];
-  threeTeamSeries=queries[12].data||[];
-  threeTeamGames=queries[13].data||[];
-  settings=queries[14].data||{id:1,monthly_fee:20000};
+
+  const requiredIndexes=[0,1,2,3,4,5,6,8,9,10,11,12];
+  const coreError=requiredIndexes.map(i=>coreQueries[i]?.error).find(Boolean);
+  if(coreError){
+    console.error('ALLIN core data load errors',coreQueries.map(q=>q?.error));
+    return toast('기존 데이터 로드 오류: '+coreError.message);
+  }
+
+  members=coreQueries[0].data||[];
+  meetings=coreQueries[1].data||[];
+  attendance=coreQueries[2].data||[];
+  teams=coreQueries[3].data||[];
+  teamMembers=coreQueries[4].data||[];
+  transactions=coreQueries[5].data||[];
+  fees=coreQueries[6].data||[];
+  feePayments=coreQueries[7].error?[]:(coreQueries[7].data||[]);
+  if(coreQueries[7].error)console.warn('fee_payments load warning',coreQueries[7].error);
+  games=coreQueries[8].data||[];
+  gameDues=coreQueries[9].data||[];
+  matchSeries=coreQueries[10].data||[];
+  seriesSets=coreQueries[11].data||[];
+  settings=coreQueries[12].data||{id:1,monthly_fee:20000};
+
+  // 3팀 확장 데이터는 선택적으로 읽는다.
+  // SQL 미적용/권한 오류가 있어도 기존 데이터 배열을 건드리지 않는다.
+  const optionalQueries=await Promise.all([
+    sb.from('three_team_series').select('*').order('created_at',{ascending:false}),
+    sb.from('three_team_games').select('*').order('game_no',{ascending:true})
+  ]);
+
+  const optionalError=optionalQueries.map(q=>q?.error).find(Boolean);
+  if(optionalError){
+    threeTeamFeatureReady=false;
+    threeTeamSeries=[];
+    threeTeamGames=[];
+    console.warn('3팀 시리즈 기능 비활성화:',optionalQueries.map(q=>q?.error));
+  }else{
+    threeTeamFeatureReady=true;
+    threeTeamSeries=optionalQueries[0].data||[];
+    threeTeamGames=optionalQueries[1].data||[];
+  }
+
   renderAll();
 }
 let rtStarted=false;
@@ -399,7 +422,9 @@ function renderMatchday(){
     $('seriesStartArea').innerHTML=`<div class="notice"><b>3팀 단판 승자연전</b><br>
       1경기 ${ts[0].team_name} vs ${ts[1].team_name} → 승자 vs ${ts[2].team_name} → 우승 확정 후 최종 패자 결정전<br>
       1:1:1이면 시리즈를 초기화하고 재경기합니다.</div>
-      <button class="btn dark" style="width:100%;margin-top:12px" onclick="startThreeTeamSeries()">3팀 단판 시리즈 시작</button>`;
+      ${threeTeamFeatureReady
+        ?'<button class="btn dark" style="width:100%;margin-top:12px" onclick="startThreeTeamSeries()">3팀 단판 시리즈 시작</button>'
+        :'<div class="notice warning" style="margin-top:12px"><b>3팀 기능 준비 필요</b><br>Supabase에서 ALLIN_V55_Three_Team_Series_Update.sql을 실행하세요. 기존 회원·회비·모임 기능은 정상 사용 가능합니다.</div>'}`;
   }else if(ts.length>=2){
     $('seriesStartArea').innerHTML=`<div class="form-grid">
       <div class="field"><label>A팀</label><select id="seriesTeamA">${ts.map(t=>`<option value="${t.id}">${t.team_name}</option>`).join('')}</select></div>
@@ -416,6 +441,7 @@ function renderMatchday(){
   renderSeriesHistory(m);
 }
 async function startThreeTeamSeries(){
+  if(!threeTeamFeatureReady)return toast('3팀 시리즈 SQL 업데이트를 먼저 실행하세요.');
   const m=matchMeeting();
   if(!m)return toast('모임을 선택하세요.');
   const ts=teams.filter(t=>t.meeting_id===m.id);

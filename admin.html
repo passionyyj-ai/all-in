@@ -1,13 +1,19 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>올인 족구단 총무</title><link rel="stylesheet" href="styles.css?v=5.6.5"><link rel="manifest" href="/all-in/manifest-admin.webmanifest?v=5.6.5">
-<meta name="theme-color" content="#080b10">
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.7.2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<link rel="manifest" href="/all-in/manifest-admin.webmanifest?v=5.7.2">
+<link rel="apple-touch-icon" href="/all-in/icon-admin-192.png?v=572">
 <meta name="apple-mobile-web-app-title" content="ALLIN 총무">
-<link rel="apple-touch-icon" href="/all-in/icon-admin-192.png?v=5.6.5">
+<meta name="application-name" content="ALLIN 총무">
+<meta name="theme-color" content="#1e293b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 </head>
 <body>
 <div id="loginView" class="login-wrap"><div class="login-card"><div class="hero"><img class="club-logo" src="allin-logo.png" alt="ALLIN JOKGUCLUB 로고"><h1>총무 관리자</h1><div class="club-subtitle">ALLIN JOKGUCLUB · 2023</div><p>클럽 관리 시스템</p></div>
-<div class="stack"><input id="email" autocomplete="username" placeholder="아이디" value="admin"><input id="password" type="password" inputmode="numeric" autocomplete="current-password" placeholder="비밀번호"><button class="btn dark" onclick="login()">로그인</button></div>
+<div class="stack"><input id="email" autocomplete="username" placeholder="아이디" value="admin"><input id="password" type="password" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="current-password" placeholder="비밀번호"><button class="btn dark" onclick="login()">로그인</button></div>
 <div class="notice" style="margin-top:12px">로그인 아이디는 <b>admin</b>, 초기 비밀번호는 <b>1111</b>입니다.</div><a href="index.html" style="display:block;text-align:center;color:#6b7280;font-size:12px;margin-top:18px">회원 참석체크로 이동</a></div></div>
 
 <div id="appView" class="shell hidden">
@@ -110,9 +116,9 @@
 
 <div class="modal" id="adminPasswordModal"><div class="modal-card">
   <div class="modal-head"><h3>관리자 비밀번호 변경</h3><button class="close" onclick="closeModal('adminPasswordModal')">×</button></div>
-  <div class="field"><label>현재 비밀번호</label><input id="adminCurrentPassword" type="password" autocomplete="current-password" placeholder="현재 비밀번호"></div>
-  <div class="field" style="margin-top:10px"><label>새 비밀번호</label><input id="adminNewPassword" type="password" autocomplete="new-password" placeholder="8자 이상 권장"></div>
-  <div class="field" style="margin-top:10px"><label>새 비밀번호 확인</label><input id="adminNewPasswordConfirm" type="password" autocomplete="new-password" placeholder="새 비밀번호 다시 입력"></div>
+  <div class="field"><label>현재 비밀번호</label><input id="adminCurrentPassword" type="password" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="current-password" placeholder="현재 비밀번호"></div>
+  <div class="field" style="margin-top:10px"><label>새 비밀번호</label><input id="adminNewPassword" type="password" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="new-password" placeholder="8자 이상 권장"></div>
+  <div class="field" style="margin-top:10px"><label>새 비밀번호 확인</label><input id="adminNewPasswordConfirm" type="password" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="new-password" placeholder="새 비밀번호 다시 입력"></div>
   <div class="notice" style="margin-top:12px">변경 후 모든 기기에서 기존 관리자 비밀번호는 사용할 수 없습니다.</div>
   <button class="btn dark" style="width:100%;margin-top:14px" onclick="changeAdminPassword()">비밀번호 변경</button>
 </div></div>
@@ -203,5 +209,5 @@
 </div></div>
 
 <div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.6.5"></script><script src="common.js?v=5.6.5"></script><script src="admin.js?v=5.6.5"></script><script src="pwa-admin.js?v=5.6.5"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.7.2"></script><script src="common.js?v=5.7.2"></script><script src="admin.js?v=5.7.2"></script><script src="pwa-admin.js?v=5.7.2"></script>
 </body></html>

@@ -1,1 +1,9 @@
-(()=>{if(!('serviceWorker'in navigator))return;window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=5.6.5',{scope:'./'});r.update()}catch(e){console.warn('ALLIN admin PWA registration failed',e)}})})();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('/all-in/sw.js?v=5.7.2', {scope:'/all-in/'});
+    } catch (error) {
+      console.error('총무용 PWA 등록 실패', error);
+    }
+  });
+}

@@ -1,0 +1,51 @@
+{
+  "name": "올인 족구단",
+  "short_name": "ALLIN",
+  "description": "올인 족구단 회원·회비·참석·팀·경기·게임비 관리 앱",
+  "id": "/all-in/",
+  "start_url": "/all-in/",
+  "scope": "/all-in/",
+  "display": "standalone",
+  "background_color": "#080b10",
+  "theme_color": "#080b10",
+  "lang": "ko-KR",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/all-in/icon-192.png?v=5.0.2",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/all-in/icon-512.png?v=5.0.2",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "회원 참석 체크",
+      "short_name": "참석 체크",
+      "url": "/all-in/",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "총무 관리",
+      "short_name": "총무",
+      "url": "/all-in/admin.html",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

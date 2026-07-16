@@ -1,51 +1,30 @@
-# ALLIN V4.9.1
+# ALLIN V5.0.3 - iOS Manifest Icon Fix
 
-## 수정
-- 회비 화면 상태 문구 수정
-  - `게임비 잔액` → `회비 미납`
-  - 납부 상태 → `납부완료`
-- 게임비 관리 화면의 `게임비 잔액` 표현은 그대로 유지
-- JS/CSS/설정 파일에 버전 파라미터 적용
-  - `styles.css?v=4.9.1`
-  - `config.js?v=4.9.1`
-  - `common.js?v=4.9.1`
-  - `admin.js?v=4.9.1`
-  - `member.js?v=4.9.1`
-- GitHub Pages 업데이트 후 브라우저가 새 버전 파일을 다시 요청하도록 캐시 무효화
+## 원인 수정
+- apple-touch-icon 선언 제거
+- Web App Manifest 아이콘을 홈 화면 아이콘 소스로 통일
+- 기존 아이콘 캐시를 피하기 위해 아이콘 파일명 자체를 신규 생성
+  - allin-app-icon-192-v503.png
+  - allin-app-icon-512-v503.png
+- Manifest 파일명도 신규 생성
+  - allin-manifest-v503.webmanifest
+- V5.0.2의 잘못된 `v=5.0.2.2` 버전 문자열 수정
+- Service Worker 캐시 `allin-v5.0.3`
 
 ## 적용
-1. ZIP 내용을 GitHub `all-in` 저장소에 덮어 업로드
-2. 추가 Supabase SQL 실행 필요 없음
-3. GitHub Pages 배포 완료 후 일반 새로고침
+1. GitHub all-in 저장소에 ZIP 전체 덮어 업로드
+2. GitHub Pages 배포 완료 대기
+3. 기존 홈 화면 ALLIN/올 아이콘 삭제
+4. iPhone 설정 > Safari > 고급 > 웹 사이트 데이터에서 passionyyj-ai.github.io 데이터 삭제 권장
+5. Safari를 완전히 종료 후 다시 실행
+6. https://passionyyj-ai.github.io/all-in/admin.html 직접 접속
+7. 공유 > 홈 화면에 추가 > 웹 앱으로 열기 ON > 추가
 
-# ALLIN V4.9
+추가 Supabase SQL은 필요 없습니다.
 
-## 용어 변경
-- 게임비 미수금 · 납부 관리 → 게임비 관리
-- 미납액 → 게임비 잔액
-- 미납 건수 → 게임 횟수
-- 미납자 → 게임비 대상자
-- 총 미납금액 → 총 게임비
-- 완납 → 납부완료
-
-## 카카오톡 공유 개선
-기존처럼 `2026년 7월` 월 단위 제목을 쓰지 않습니다.
-실제 모임일자를 기준으로 게임비를 묶어 표시합니다.
-
-예:
-⚽ 올인 족구단 게임비 안내
-
-📅 2026-07-05 모임
-• 유영주 : 4,000원
-• 김철수 : 2,000원
-
-📅 2026-07-12 모임
-• 유영주 : 2,000원
-
-총 게임비 : 8,000원
-입금 완료 후 총무에게 알려주세요.
-
-## 적용
-1. ZIP 내용을 GitHub all-in 저장소에 덮어 업로드
-2. 추가 Supabase SQL 실행은 필요 없음
-3. GitHub Pages 배포 후 아이폰 Safari 새로고침
+## V5.1 업데이트
+- 자동 팀 편성 시 참석자 전원을 강제 배분하여 대기인원 제거
+- 기존 4명 기준 팀 수를 유지하면서 남는 인원을 균등 분산 (예: 13명 → 5/4/4)
+- 관리자 화면에서 회원별 팀을 직접 변경 가능
+- 진행 중인 시리즈에서는 팀 재편성 및 수동 변경 잠금
+- 적용 전 Supabase SQL Editor에서 `ALLIN_V51_DB_Update.sql` 실행 필요

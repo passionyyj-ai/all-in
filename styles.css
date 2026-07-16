@@ -156,3 +156,16 @@ body{
   .member-card .dashboard-readonly table{min-width:0}
   .member-card .dashboard-readonly th,.member-card .dashboard-readonly td{white-space:nowrap}
 }
+
+/* ===== V5.1 FORCED TEAM ASSIGNMENT ===== */
+.team-summary{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.team-card h3{display:flex;justify-content:space-between;align-items:center}
+.team-card h3 small{font-size:12px;color:var(--muted)}
+.team-member-manage{align-items:center;gap:10px}
+.team-member-manage>div{min-width:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.team-assign-select{width:auto;min-width:82px;padding:7px 9px;font-size:12px;border-radius:10px}
+.team-assign-select:disabled{opacity:.55;cursor:not-allowed}
+.notice.success{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+.notice.warning{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+.empty.compact{padding:14px}
+@media(max-width:760px){.team-member-manage{align-items:flex-start}.team-assign-select{min-width:76px}}

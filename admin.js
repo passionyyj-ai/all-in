@@ -226,15 +226,30 @@ async function generateTeams(mode='balanced'){
   const m=currentMeeting();if(!m)return;
   const active=matchSeries.find(s=>s.meeting_id===m.id&&s.status==='active');
   if(active)return toast('진행 중인 시리즈를 먼저 종료하세요.');
-  const rpc=mode==='random'?'admin_generate_random_teams_v42':'admin_generate_balanced_teams_v42';
+  const rpc=mode==='random'?'admin_generate_random_teams_v51':'admin_generate_balanced_teams_v51';
   const {data,error}=await sb.rpc(rpc,{p_meeting_id:m.id});
   if(error)return toast(error.message);
   toast(`${mode==='random'?'완전 랜덤':'포지션 균형'} 팀 ${data?.team_count||0}개 생성`);
   await loadAll()
 }
+function teamMemberRow(x,currentTeamId,ts,locked=false){
+  const options=ts.map(t=>`<option value="${t.id}" ${t.id===currentTeamId?'selected':''}>${t.team_name}</option>`).join('');
+  return `<div class="team-member team-member-manage"><div><b>${x.name}</b> ${badge(x.position)}</div><select class="team-assign-select" ${locked?'disabled':''} onchange="changeMemberTeam('${x.id}',this.value)">${options}</select></div>`;
+}
+async function changeMemberTeam(memberId,teamId){
+  const m=currentMeeting();if(!m||!teamId)return;
+  const active=matchSeries.find(s=>s.meeting_id===m.id&&s.status==='active');
+  if(active)return toast('진행 중인 시리즈에서는 팀을 변경할 수 없습니다.');
+  const {error}=await sb.rpc('admin_assign_member_team_v51',{p_meeting_id:m.id,p_member_id:memberId,p_team_id:teamId});
+  if(error)return toast(error.message);
+  toast('팀 배정을 변경했습니다.');await loadAll();
+}
 function renderTeams(){
-  const m=currentMeeting();if(!m)return;const ts=teams.filter(t=>t.meeting_id===m.id).sort((a,b)=>a.team_no-b.team_no);const used=teamMembers.filter(tm=>ts.some(t=>t.id===tm.team_id)).map(tm=>tm.member_id),waiting=attendingPeople(m).filter(x=>!used.includes(x.id));
-  $('teamArea').innerHTML=ts.length?`<div class="team-grid">${ts.map(t=>`<div class="team-card"><h3>${t.team_name}</h3>${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>members.find(x=>x.id===tm.member_id)).filter(Boolean).map(x=>`<div class="team-member"><b>${x.name}</b>${badge(x.position)}</div>`).join('')}</div>`).join('')}</div>${waiting.length?`<div class="notice" style="margin-top:12px"><b>대기:</b> ${waiting.map(x=>`${x.name}(${x.position})`).join(', ')}</div>`:''}`:'<div class="empty">팀을 생성해 주세요.</div>';
+  const m=currentMeeting();if(!m)return;
+  const ts=teams.filter(t=>t.meeting_id===m.id).sort((a,b)=>a.team_no-b.team_no);
+  const active=matchSeries.find(s=>s.meeting_id===m.id&&s.status==='active');
+  const attending=attendingPeople(m),used=teamMembers.filter(tm=>ts.some(t=>t.id===tm.team_id)).map(tm=>tm.member_id),unassigned=attending.filter(x=>!used.includes(x.id));
+  $('teamArea').innerHTML=ts.length?`<div class="team-summary">${ts.map(t=>`<span class="badge">${t.team_name} ${teamMembers.filter(tm=>tm.team_id===t.id).length}명</span>`).join('')}</div><div class="team-grid">${ts.map(t=>`<div class="team-card"><h3>${t.team_name} <small>${teamMembers.filter(tm=>tm.team_id===t.id).length}명</small></h3>${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>members.find(x=>x.id===tm.member_id)).filter(Boolean).map(x=>teamMemberRow(x,t.id,ts,!!active)).join('')||'<div class="empty compact">배정된 회원 없음</div>'}</div>`).join('')}</div>${unassigned.length?`<div class="notice warning" style="margin-top:12px"><b>미배정 ${unassigned.length}명:</b> ${unassigned.map(x=>x.name).join(', ')} · 자동편성을 다시 실행하세요.</div>`:'<div class="notice success" style="margin-top:12px"><b>대기인원 0명</b> · 참석자 전원이 팀에 배정되었습니다.</div>'}`:'<div class="empty">팀을 생성해 주세요.</div>';
 }
 async function addGame(){
   const m=currentMeeting('gameMeetingSelect'),ts=teams.filter(t=>t.meeting_id===m?.id).sort((a,b)=>a.team_no-b.team_no);
@@ -308,7 +323,7 @@ function renderMatchday(){
   $('teamGenerationStatus').textContent=active?'시리즈 진행 중 · 재편성 잠금':'팀 편성 가능';
   $('matchdayTeams').innerHTML=ts.length?`<div class="team-grid">${ts.map(t=>`<div class="team-card">
     <h3>${t.team_name}</h3>
-    ${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>members.find(x=>x.id===tm.member_id)).filter(Boolean).map(x=>`<div class="team-member"><b>${x.name}</b>${badge(x.position)}</div>`).join('')}
+    ${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>members.find(x=>x.id===tm.member_id)).filter(Boolean).map(x=>teamMemberRow(x,t.id,ts,!!active)).join('')}
   </div>`).join('')}</div>`:'<div class="empty">참석자를 확인하고 팀을 편성하세요.</div>';
 
   if(active){

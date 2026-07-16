@@ -267,11 +267,47 @@ function renderTeams(){
   const attending=attendingPeople(m),used=teamMembers.filter(tm=>ts.some(t=>t.id===tm.team_id)).map(tm=>tm.member_id),unassigned=attending.filter(x=>!used.includes(x.id));
   $('teamArea').innerHTML=ts.length?`<div class="team-summary">${ts.map(t=>`<span class="badge">${t.team_name} ${teamMembers.filter(tm=>tm.team_id===t.id).length}명</span>`).join('')}</div><div class="team-grid">${ts.map(t=>`<div class="team-card"><h3>${t.team_name} <small>${teamMembers.filter(tm=>tm.team_id===t.id).length}명</small></h3>${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>members.find(x=>x.id===tm.member_id)).filter(Boolean).map(x=>teamMemberRow(x,t.id,ts,!!active)).join('')||'<div class="empty compact">배정된 회원 없음</div>'}</div>`).join('')}</div>${unassigned.length?`<div class="notice warning" style="margin-top:12px"><b>미배정 ${unassigned.length}명:</b> ${unassigned.map(x=>x.name).join(', ')} · 자동편성을 다시 실행하세요.</div>`:'<div class="notice success" style="margin-top:12px"><b>대기인원 0명</b> · 참석자 전원이 팀에 배정되었습니다.</div>'}`:'<div class="empty">팀을 생성해 주세요.</div>';
 }
-async function addGame(){
-  const m=currentMeeting('gameMeetingSelect'),ts=teams.filter(t=>t.meeting_id===m?.id).sort((a,b)=>a.team_no-b.team_no);
+function gameTeamsForMeeting(meetingId){
+  return teams.filter(t=>t.meeting_id===meetingId).sort((a,b)=>a.team_no-b.team_no);
+}
+function fillGameTeamSelects(prefix,meetingId,selectedA='',selectedB=''){
+  const ts=gameTeamsForMeeting(meetingId);
+  const a=$(prefix==='new'?'newGameTeamA':'editGameTeamA');
+  const b=$(prefix==='new'?'newGameTeamB':'editGameTeamB');
+  if(!a||!b)return;
+  a.innerHTML=ts.map(t=>`<option value="${t.id}" ${t.id===selectedA?'selected':''}>${t.team_name}</option>`).join('');
+  b.innerHTML=ts.map(t=>`<option value="${t.id}" ${t.id===selectedB?'selected':''}>${t.team_name}</option>`).join('');
+  if(!selectedA&&ts[0])a.value=ts[0].id;
+  if(!selectedB&&ts[1])b.value=ts[1].id;
+  syncGameTeamOptions(prefix);
+}
+function syncGameTeamOptions(prefix){
+  const a=$(prefix==='new'?'newGameTeamA':'editGameTeamA');
+  const b=$(prefix==='new'?'newGameTeamB':'editGameTeamB');
+  if(!a||!b)return;
+  [...a.options].forEach(o=>o.disabled=o.value===b.value);
+  [...b.options].forEach(o=>o.disabled=o.value===a.value);
+  if(a.value===b.value){
+    const next=[...b.options].find(o=>o.value!==a.value);
+    if(next)b.value=next.value;
+  }
+}
+function addGame(){
+  const m=currentMeeting('gameMeetingSelect'),ts=gameTeamsForMeeting(m?.id);
+  if(!m)return toast('모임을 선택하세요.');
   if(ts.length<2)return toast('먼저 2개 이상의 팀을 생성하세요.');
-  const {error}=await sb.from('games').insert({meeting_id:m.id,team_a:ts[0].id,team_b:ts[1].id});
-  if(error)return toast(error.message);await loadAll()
+  $('newGameMeetingId').value=m.id;
+  fillGameTeamSelects('new',m.id);
+  openModal('gameCreateModal');
+}
+async function saveNewGame(){
+  const meetingId=$('newGameMeetingId').value;
+  const teamA=$('newGameTeamA').value,teamB=$('newGameTeamB').value;
+  if(!meetingId||!teamA||!teamB)return toast('경기 팀을 선택하세요.');
+  if(teamA===teamB)return toast('서로 다른 두 팀을 선택하세요.');
+  const {error}=await sb.from('games').insert({meeting_id:meetingId,team_a:teamA,team_b:teamB});
+  if(error)return toast(error.message);
+  closeModal('gameCreateModal');toast('경기를 생성했습니다.');await loadAll();
 }
 function teamName(id){return teams.find(t=>t.id===id)?.team_name||'-'}
 function openScore(id){
@@ -300,7 +336,7 @@ function renderGames(){
   $('gameList').innerHTML=rows.map((g,i)=>`<div class="row" style="justify-content:space-between;padding:11px 0;border-bottom:1px solid #e5e7eb">
     <div><b>${i+1}경기 · ${teamName(g.team_a)} ${g.score_a??'-'} : ${g.score_b??'-'} ${teamName(g.team_b)}</b>
     <div style="font-size:12px;color:#6b7280;margin-top:3px">${g.winner_team_id?`승리 ${teamName(g.winner_team_id)}`:'결과 미입력'}</div></div>
-    <div class="row"><button class="btn blue small" onclick="openScore('${g.id}')">점수</button>${g.winner_team_id?`<button class="btn small" onclick="clearGameResult('${g.id}')">결과취소</button>`:''}<button class="btn red small" onclick="deleteGame('${g.id}')">삭제</button></div>
+    <div class="row"><button class="btn blue small" onclick="openScore('${g.id}')">결과 입력</button>${g.winner_team_id?`<button class="btn small" onclick="clearGameResult('${g.id}')">결과취소</button>`:''}<button class="btn red small" onclick="deleteGame('${g.id}')">삭제</button></div>
   </div>`).join('')||'<div class="empty">경기 없음</div>';
   const dues=gameDues.filter(d=>d.meeting_id===m.id),paid=dues.filter(d=>d.status==='paid'),unpaid=dues.filter(d=>d.status==='unpaid');
   $('gameFeeSummary').innerHTML=dues.length?`<div class="grid g4">

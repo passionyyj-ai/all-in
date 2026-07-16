@@ -1,0 +1,26 @@
+{
+  "name": "ALLIN 회원",
+  "short_name": "ALLIN",
+  "description": "올인 족구단 회원 전용 앱",
+  "id": "/all-in/?app=member",
+  "start_url": "/all-in/?app=member",
+  "scope": "/all-in/",
+  "display": "standalone",
+  "background_color": "#080b10",
+  "theme_color": "#080b10",
+  "lang": "ko-KR",
+  "icons": [
+    {
+      "src": "/all-in/icon-member-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/all-in/icon-member-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

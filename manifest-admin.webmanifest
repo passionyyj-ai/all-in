@@ -1,0 +1,26 @@
+{
+  "name": "ALLIN 총무",
+  "short_name": "ALLIN 총무",
+  "description": "올인 족구단 총무 전용 관리 앱",
+  "id": "/all-in/admin.html?app=admin",
+  "start_url": "/all-in/admin.html?app=admin",
+  "scope": "/all-in/",
+  "display": "standalone",
+  "background_color": "#080b10",
+  "theme_color": "#991b1b",
+  "lang": "ko-KR",
+  "icons": [
+    {
+      "src": "/all-in/icon-admin-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/all-in/icon-admin-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

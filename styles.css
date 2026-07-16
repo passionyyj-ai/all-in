@@ -226,3 +226,14 @@ body{
 @media(max-width:520px){
   .operation-bottom .nav{font-size:12px}
 }
+
+.operation-page #dashboard,
+.operation-page #members,
+.operation-page #finance,
+.operation-page #games,
+.operation-page #receivables{
+  display:none!important;
+}
+.operation-page .operation-only-nav{display:block!important}
+.operation-page main{padding-bottom:96px}
+.operation-page .operation-bottom{grid-template-columns:repeat(3,1fr)!important;max-width:620px}

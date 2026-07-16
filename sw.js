@@ -1,9 +1,9 @@
-const CACHE_NAME='allin-v5.6.1';
+const CACHE_NAME='allin-v5.6.2';
 const APP_SHELL=[
  './','./index.html','./admin.html','./operation.html',
- './styles.css?v=5.6.1','./config.js?v=5.6.1','./common.js?v=5.6.1',
- './member.js?v=5.6.1','./admin.js?v=5.6.1','./operation.js?v=5.6.1',
- './manifest-member.webmanifest?v=5.6.1','./manifest-admin.webmanifest?v=5.6.1',
+ './styles.css?v=5.6.2','./config.js?v=5.6.2','./common.js?v=5.6.2',
+ './member.js?v=5.6.2','./admin.js?v=5.6.2','./operation.js?v=5.6.2',
+ './manifest-member.webmanifest?v=5.6.2','./manifest-admin.webmanifest?v=5.6.2',
  './allin-logo.png','./icon-member-192.png','./icon-member-512.png',
  './icon-admin-192.png','./icon-admin-512.png'
 ];

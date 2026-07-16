@@ -819,3 +819,9 @@ function shareMemberGameDues(memberId){
   const text=buildMemberDuesShareText(memberId);
   shareText(text,'개인 게임비 안내');
 }
+
+window.openMember=()=>toast('경기 운영 화면에서는 회원관리를 사용할 수 없습니다.');
+window.openTx=()=>toast('경기 운영 화면에서는 회비·입출금 관리를 사용할 수 없습니다.');
+window.saveFeeAmount=()=>toast('경기 운영 화면에서는 회비 관리를 사용할 수 없습니다.');
+window.rolloverYear=()=>toast('경기 운영 화면에서는 연도 이월을 사용할 수 없습니다.');
+window.resetSystem=()=>toast('경기 운영 화면에서는 초기화를 사용할 수 없습니다.');

@@ -1,190 +1,100 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>올인 족구단 총무</title><link rel="stylesheet" href="styles.css?v=5.6.1"><link rel="manifest" href="/all-in/manifest-admin.webmanifest?v=5.5.3">
-<meta name="theme-color" content="#080b10">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ALLIN 총무">
-<link rel="apple-touch-icon" href="/all-in/icon-admin-192.png?v=5.5.3">
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#111827" name="theme-color"/><title>올인 족구단 총무</title><link href="styles.css?v=5.6.2" rel="stylesheet"/><link href="/all-in/manifest-admin.webmanifest?v=5.5.3" rel="manifest"/>
+<meta content="#080b10" name="theme-color"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
+<meta content="ALLIN 총무" name="apple-mobile-web-app-title"/>
+<link href="/all-in/icon-admin-192.png?v=5.5.3" rel="apple-touch-icon"/>
 </head>
-<body>
-<div id="appView" class="shell">
-<header class="top"><div class="brand"><div class="brand-title-wrap"><img class="brand-mark" src="allin-logo.png" alt="ALLIN 로고"><div><h1>올인 족구단 · 경기 운영</h1><small id="operationOperator">회원 대리 운영</small></div></div><div class="top-actions"><button class="btn small" onclick="returnToMember()">회원 화면</button></div></div></header>
+<body class="operation-page">
+<div class="shell" id="appView">
+<header class="top"><div class="brand"><div class="brand-title-wrap"><img alt="ALLIN 로고" class="brand-mark" src="allin-logo.png"/><div><h1>올인 족구단 · 경기 운영</h1><small id="operationOperator">회원 대리 운영</small></div></div><div class="top-actions"><button class="btn small" onclick="returnToMember()">회원 화면</button></div></div></header>
 <main>
-<section id="dashboard" class="view hidden"><div id="kpis" class="grid g4"></div><div class="title"><h2>다가오는 일요일</h2><span id="nextMeetingDate"></span></div><div class="grid g2"><div class="card" id="meetingSummary"></div><div class="card"><div class="title" style="margin-top:0"><h2>최근 입출금</h2><span>최근 6건</span></div><div id="recentTx"></div></div></div>
-<div class="title"><h2>시스템 관리</h2><span>연도 이월 · 운영 데이터 초기화</span></div>
-<div class="grid g2">
-  <div class="card">
-    <h3 style="margin-top:0">연도 마감 및 이월</h3>
-    <div class="notice">선택한 연도 말 잔액을 계산해 다음 연도의 <b>이월잔액</b>으로 1회 등록합니다. 이미 이월된 연도는 중복 처리되지 않습니다.</div>
-    <div class="form-grid" style="margin-top:12px">
-      <div class="field"><label>마감 연도</label><input id="carryFromYear" type="number" min="2023" max="2100"></div>
-      <div class="field"><label>다음 연도</label><input id="carryToYear" type="number" disabled></div>
-    </div>
-    <div id="carryPreview" class="notice" style="margin-top:10px"></div>
-    <button class="btn blue" style="width:100%;margin-top:12px" onclick="carryYearBalance()">다음 연도로 이월</button>
-  </div>
-  <div class="card">
-    <h3 style="margin-top:0;color:#dc2626">운영 데이터 초기화</h3>
-    <div class="notice">회원 명단, 관리자 권한, 월 회비 설정은 유지합니다. 회비 납부·입출금·모임·참석·팀·경기·게임비·시리즈 데이터는 삭제됩니다.</div>
-    <button class="btn red" style="width:100%;margin-top:12px" onclick="openResetModal()">회원 제외 전체 초기화</button>
-  </div>
+
+
+
+<section class="view" id="attendance"><div class="title"><h2>일요일 모임 · 참석</h2></div><div class="card"><div class="toolbar"><select id="meetingSelect" onchange="renderAttendance()"></select><button class="btn blue small" onclick="openAttendance()">총무 직접 수정</button></div><div id="attendanceSummary"></div></div><div class="title"><h2>팀 편성</h2><span>자동 배분 후 관리자가 직접 변경</span></div><div class="card">
+<div class="row">
+<button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 생성</button>
+<button class="btn blue" onclick="generateTeams('random')">완전 랜덤 생성</button>
 </div>
-</section>
-
-<section id="members" class="view hidden"><div class="title"><h2>회원 명단</h2><button class="btn dark small" onclick="openMember()">+ 회원 추가</button></div><div class="card"><div class="toolbar"><input id="memberSearchAdmin" placeholder="회원 검색" oninput="renderMembers()"><select id="posFilter" onchange="renderMembers()"><option value="">전체 포지션</option><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div><div class="table-wrap"><table><thead><tr><th>이름</th><th>출생연도</th><th>연락처</th><th>주 포지션</th><th>보조 포지션</th><th>PIN</th><th>관리</th></tr></thead><tbody id="memberBody"></tbody></table></div></div></section>
-
-<section id="finance" class="view hidden"><div class="title"><h2>회비 · 비용</h2><button class="btn dark small" onclick="openTx()">+ 입출금 등록</button></div><div id="financeKpis" class="grid g4"></div><div class="title"><h2>회원별 월 회비</h2></div><div class="card"><div class="toolbar"><input type="month" id="feeMonth" onchange="renderFees()"><div class="row"><input type="number" id="feeAmount" min="0" step="1000" style="width:125px"><button class="btn small" onclick="saveFeeAmount()">회비 저장</button></div></div><div class="table-wrap"><table><thead><tr><th>회원</th><th>포지션</th><th>회비</th><th>상태</th><th>납부일</th><th>관리</th></tr></thead><tbody id="feeBody"></tbody></table></div></div><div class="title"><h2>일자별 입출금</h2></div><div class="card"><div class="toolbar"><input type="month" id="txMonth" onchange="renderTx()"><select id="txTypeFilter" onchange="renderTx()"><option value="">전체</option><option value="income">수입</option><option value="expense">지출</option></select></div><div class="table-wrap"><table><thead><tr><th>일자</th><th>구분</th><th>항목</th><th>회원/대상</th><th>금액</th><th>비고</th><th>관리</th></tr></thead><tbody id="txBody"></tbody></table></div></div></section>
-
-<section id="attendance" class="view"><div class="title"><h2>일요일 모임 · 참석</h2></div><div class="card"><div class="toolbar"><select id="meetingSelect" onchange="renderAttendance()"></select><button class="btn blue small" onclick="openAttendance()">총무 직접 수정</button></div><div id="attendanceSummary"></div></div><div class="title"><h2>팀 편성</h2><span>자동 배분 후 관리자가 직접 변경</span></div><div class="card">
-    <div class="row">
-      <button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 생성</button>
-      <button class="btn blue" onclick="generateTeams('random')">완전 랜덤 생성</button>
-    </div>
-    <div class="notice" style="margin-top:10px"><b>포지션 균형</b>: 공격·토스·좌수비·우수비를 고려합니다.<br><b>완전 랜덤</b>: 포지션과 관계없이 참석자 전원을 무작위로 균등 배분합니다. 남는 인원도 각 팀에 자동 배치되어 대기자가 생기지 않습니다.</div><div class="notice" style="margin-top:10px"><b>관리자 직접 지정</b>: 팀 생성 후 각 회원 옆의 팀 선택 메뉴에서 원하는 팀으로 즉시 이동할 수 있습니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
-
-<section id="matchday" class="view active">
+<div class="notice" style="margin-top:10px"><b>포지션 균형</b>: 공격·토스·좌수비·우수비를 고려합니다.<br/><b>완전 랜덤</b>: 포지션과 관계없이 참석자 전원을 무작위로 균등 배분합니다. 남는 인원도 각 팀에 자동 배치되어 대기자가 생기지 않습니다.</div><div class="notice" style="margin-top:10px"><b>관리자 직접 지정</b>: 팀 생성 후 각 회원 옆의 팀 선택 메뉴에서 원하는 팀으로 즉시 이동할 수 있습니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
+<section class="view active" id="matchday">
 <div class="title"><h2>일요일 경기 운영</h2><span>참석자 전원 강제 배분 → 경기 → 패배팀 게임비 → 재편성</span></div>
 <div class="card">
-  <div class="toolbar">
-    <select id="matchMeetingSelect" onchange="renderMatchday()"></select>
-    <button class="btn small" onclick="prepareMatchday()">새로고침</button>
-  </div>
-  <div id="matchdaySummary"></div>
+<div class="toolbar">
+<select id="matchMeetingSelect" onchange="renderMatchday()"></select>
+<button class="btn small" onclick="prepareMatchday()">새로고침</button>
 </div>
-
+<div id="matchdaySummary"></div>
+</div>
 <div class="title"><h2>1. 팀 편성</h2><span id="teamGenerationStatus"></span></div>
 <div class="card">
-  <div class="row">
-    <button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 편성</button>
-    <button class="btn blue" onclick="generateTeams('random')">완전 랜덤 편성</button>
-  </div>
-  <div class="notice" style="margin-top:10px">진행 중인 시리즈가 있으면 팀을 다시 편성하거나 회원의 팀을 변경할 수 없습니다. 참석자는 모두 팀에 배정되며 대기인원은 발생하지 않습니다.</div>
-  <div id="matchdayTeams" style="margin-top:12px"></div>
+<div class="row">
+<button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 편성</button>
+<button class="btn blue" onclick="generateTeams('random')">완전 랜덤 편성</button>
 </div>
-
+<div class="notice" style="margin-top:10px">진행 중인 시리즈가 있으면 팀을 다시 편성하거나 회원의 팀을 변경할 수 없습니다. 참석자는 모두 팀에 배정되며 대기인원은 발생하지 않습니다.</div>
+<div id="matchdayTeams" style="margin-top:12px"></div>
+</div>
 <div class="title"><h2>2. 시리즈 시작</h2><span>2팀: 다전제 · 3팀: 단판 승자연전</span></div>
 <div class="card">
-  <div id="seriesStartArea"></div>
+<div id="seriesStartArea"></div>
 </div>
-
 <div class="title"><h2>3. 시리즈 경기 진행</h2><span>팀 수에 맞는 경기 방식 자동 적용</span></div>
 <div class="card"><div id="seriesArea"></div></div>
-
 <div class="title"><h2>4. 종료된 시리즈</h2><span>최종 패배팀 게임비 자동 청구</span></div>
 <div class="card"><div id="seriesHistory"></div></div>
 </section>
 
-<section id="games" class="view hidden"><div class="title"><h2>기존 단판 경기 기록</h2><button class="btn dark small" onclick="addGame()">+ 경기 추가</button></div><div class="card"><div class="toolbar"><select id="gameMeetingSelect" onchange="renderGames()"></select></div><div id="gameList"></div></div><div class="title"><h2>게임비 청구 현황</h2><span>패배 팀원 1인당 2,000원 · 수입 자동반영 안 함</span></div><div class="card" id="gameFeeSummary"></div></section>
 
-<section id="receivables" class="view hidden">
-<div class="title"><h2>게임비 관리</h2><span>모임일별 게임비 · 회원별 합계 · 카카오톡 공유</span></div>
-<div id="receivableKpis" class="grid g4"></div>
-<div class="card" style="margin-top:12px">
-  <div class="toolbar">
-    <select id="duesStatusFilter" onchange="renderReceivables()"><option value="">전체</option><option value="unpaid">게임비 있음</option><option value="paid">납부완료</option></select>
-    <input type="month" id="duesMonth" onchange="renderReceivables()">
-  </div>
-  <div class="row" style="justify-content:flex-end;margin-bottom:10px">
-      <button class="btn blue small" onclick="shareAllGameDues()">단톡방 공유</button>
-      <button class="btn small" onclick="copyAllGameDues()">공유문구 복사</button>
-    </div>
-    <div id="duesByMeeting"></div>
-    <div class="title" style="margin-top:18px"><h3>회원별 게임비 합계</h3><span>실제 입금 확인 후 수입 반영</span></div>
-    <div class="table-wrap"><table><thead><tr><th>회원</th><th>총 청구액</th><th>납부액</th><th>미납액</th><th>미납 건수</th><th>관리</th></tr></thead><tbody id="duesBody"></tbody></table></div>
-</div>
-</section>
 </main>
-<nav class="bottom"><div class="bottom-inner operation-bottom">
-      <button class="nav" data-view="attendance" onclick="go('attendance')"><b>✓</b>참석</button>
-      <button class="nav active" data-view="matchday" onclick="go('matchday')"><b>⚽</b>운영</button>
-      <button class="nav" onclick="returnToMember()"><b>↩</b>회원</button>
-    </div></nav>
+
 </div>
 
-<div class="modal" id="memberModal"><div class="modal-card"><div class="modal-head"><h3 id="memberTitle">회원 추가</h3><button class="close" onclick="closeModal('memberModal')">×</button></div><input id="memberId" type="hidden"><div class="form-grid"><div class="field"><label>이름 *</label><input id="memberName"></div><div class="field"><label>출생연도</label><input id="memberBirthYear" type="number" min="1930" max="2100" inputmode="numeric" placeholder="예: 1977"></div><div class="field"><label>연락처</label><input id="memberPhone" type="tel"></div><div class="field"><label>주 포지션 *</label><select id="memberPosition" onchange="syncSecondaryPositions()"><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div><div class="field"><label>보조 포지션 <small>(복수 선택)</small></label><div id="memberSecondaryPositions" class="position-checks"><label><input type="checkbox" value="공격"> 공격</label><label><input type="checkbox" value="토스"> 토스</label><label><input type="checkbox" value="좌수비"> 좌수비</label><label><input type="checkbox" value="우수비"> 우수비</label></div><small class="field-help">주 포지션을 제외하고 실제로 수행 가능한 포지션을 선택하세요.</small></div><div class="field"><label>참석 PIN *</label><input id="memberPin" type="password" inputmode="numeric" maxlength="4" placeholder="4자리 숫자"></div></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveMember()">저장</button></div></div>
+
+<div class="modal" id="txModal"><div class="modal-card"><div class="modal-head"><h3 id="txModalTitle">입출금 등록</h3><button class="close" onclick="closeModal('txModal')">×</button></div><input id="txId" type="hidden"/><div class="form-grid"><div class="field"><label>일자 *</label><input id="txDate" type="date"/></div><div class="field"><label>구분 *</label><select id="txType"><option value="income">수입</option><option value="expense">지출</option></select></div><div class="field"><label>항목 *</label><input id="txCategory"/></div><div class="field"><label>회원/대상</label><input id="txTarget"/></div><div class="field"><label>금액 *</label><input id="txAmount" min="0" step="1000" type="number"/></div><div class="field"><label>비고</label><input id="txMemo"/></div></div><button class="btn dark" id="txSaveBtn" onclick="saveTx()" style="width:100%;margin-top:14px">등록</button></div></div>
 
 
-<div class="modal" id="feePaymentModal"><div class="modal-card">
-  <div class="modal-head"><h3 id="feePaymentTitle">회비 납부 등록</h3><button class="close" onclick="closeModal('feePaymentModal')">×</button></div>
-  <input id="feePaymentId" type="hidden">
-  <input id="feePaymentMemberId" type="hidden">
-  <div class="field"><label>회원</label><input id="feePaymentMemberLabel" disabled></div>
-  <div class="form-grid" style="margin-top:10px">
-    <div class="field"><label>적용 시작월 *</label><input id="feeStartMonth" type="month"></div>
-    <div class="field"><label>납부 기간 *</label>
-      <select id="feeMonths" onchange="updateFeePaymentAmount()">
-        <option value="1">1개월 (일시납)</option>
-        <option value="3">3개월</option>
-        <option value="6">6개월</option>
-        <option value="12">12개월 (연납)</option>
-      </select>
-    </div>
-    <div class="field"><label>실제 입금일 *</label><input id="feePaidDate" type="date"></div>
-    <div class="field"><label>입금 예정 금액</label><input id="feePaymentAmount" disabled></div>
-  </div>
-  <div class="notice" style="margin-top:10px">실제 입금은 수입 내역 1건으로 등록하고, 선택한 기간의 월별 회비 납부 상태를 연결합니다.</div>
-  <button class="btn dark" style="width:100%;margin-top:14px" onclick="saveFeePayment()">저장</button>
-</div></div>
-
-<div class="modal" id="txModal"><div class="modal-card"><div class="modal-head"><h3 id="txModalTitle">입출금 등록</h3><button class="close" onclick="closeModal('txModal')">×</button></div><input id="txId" type="hidden"><div class="form-grid"><div class="field"><label>일자 *</label><input id="txDate" type="date"></div><div class="field"><label>구분 *</label><select id="txType"><option value="income">수입</option><option value="expense">지출</option></select></div><div class="field"><label>항목 *</label><input id="txCategory"></div><div class="field"><label>회원/대상</label><input id="txTarget"></div><div class="field"><label>금액 *</label><input id="txAmount" type="number" min="0" step="1000"></div><div class="field"><label>비고</label><input id="txMemo"></div></div><button id="txSaveBtn" class="btn dark" style="width:100%;margin-top:14px" onclick="saveTx()">등록</button></div></div>
-
-
-<div class="modal" id="gameCreateModal"><div class="modal-card">
-  <div class="modal-head"><h3>경기 추가</h3><button class="close" onclick="closeModal('gameCreateModal')">×</button></div>
-  <input id="newGameMeetingId" type="hidden">
-  <div class="form-grid">
-    <div class="field"><label>첫 번째 팀</label><select id="newGameTeamA" onchange="syncGameTeamOptions('new')"></select></div>
-    <div class="field"><label>두 번째 팀</label><select id="newGameTeamB" onchange="syncGameTeamOptions('new')"></select></div>
-  </div>
-  <div class="notice" style="margin-top:10px">현재 모임에 편성된 팀 중 실제 경기를 치른 두 팀을 선택하세요.</div>
-  <button class="btn dark" style="width:100%;margin-top:14px" onclick="saveNewGame()">경기 생성</button>
-</div></div>
-
-<div class="modal" id="scoreModal"><div class="modal-card">
-  <div class="modal-head"><h3>경기 결과 입력</h3><button class="close" onclick="closeModal('scoreModal')">×</button></div>
-  <input id="scoreGameId" type="hidden">
-  <div class="grid g2">
-    <div class="field"><label id="scoreTeamALabel">첫 번째 팀</label><input id="scoreA" type="number" min="0" inputmode="numeric"></div>
-    <div class="field"><label id="scoreTeamBLabel">두 번째 팀</label><input id="scoreB" type="number" min="0" inputmode="numeric"></div>
-  </div>
-  <div class="notice" style="margin-top:10px">동점은 저장할 수 없습니다. 결과를 다시 저장하면 기존 승패와 게임비 청구가 최신 점수 기준으로 갱신됩니다.</div>
-  <button class="btn dark" style="width:100%;margin-top:14px" onclick="saveScore()">결과 저장</button>
-</div></div>
-
-<div class="modal" id="attendanceModal"><div class="modal-card"><div class="modal-head"><h3>참석자 직접 수정</h3><button class="close" onclick="closeModal('attendanceModal')">×</button></div><div id="attendanceChecks" class="grid g2"></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveAttendance()">저장</button></div></div>
-
+<div class="modal" id="attendanceModal"><div class="modal-card"><div class="modal-head"><h3>참석자 직접 수정</h3><button class="close" onclick="closeModal('attendanceModal')">×</button></div><div class="grid g2" id="attendanceChecks"></div><button class="btn dark" onclick="saveAttendance()" style="width:100%;margin-top:14px">저장</button></div></div>
 <div class="modal" id="threeTeamScoreModal"><div class="modal-card">
-  <div class="modal-head"><h3 id="threeTeamScoreTitle">3팀 단판 점수 입력</h3><button class="close" onclick="closeModal('threeTeamScoreModal')">×</button></div>
-  <input id="threeTeamSeriesId" type="hidden">
-  <div class="grid g2">
-    <div class="field"><label id="threeTeamALabel">팀 A</label><input id="threeTeamScoreA" type="number" min="0" inputmode="numeric"></div>
-    <div class="field"><label id="threeTeamBLabel">팀 B</label><input id="threeTeamScoreB" type="number" min="0" inputmode="numeric"></div>
-  </div>
-  <div class="notice" style="margin-top:10px">
+<div class="modal-head"><h3 id="threeTeamScoreTitle">3팀 단판 점수 입력</h3><button class="close" onclick="closeModal('threeTeamScoreModal')">×</button></div>
+<input id="threeTeamSeriesId" type="hidden"/>
+<div class="grid g2">
+<div class="field"><label id="threeTeamALabel">팀 A</label><input id="threeTeamScoreA" inputmode="numeric" min="0" type="number"/></div>
+<div class="field"><label id="threeTeamBLabel">팀 B</label><input id="threeTeamScoreB" inputmode="numeric" min="0" type="number"/></div>
+</div>
+<div class="notice" style="margin-top:10px">
     모든 경기는 단판입니다. 최초 회차에서 종료되면 최종 패배팀은 1인당 2,000원,
     1:1:1 초기화가 한 번이라도 발생한 뒤 종료되면 1인당 4,000원이 청구됩니다.
   </div>
-  <button class="btn dark" style="width:100%;margin-top:14px" onclick="saveThreeTeamGame()">단판 결과 저장</button>
+<button class="btn dark" onclick="saveThreeTeamGame()" style="width:100%;margin-top:14px">단판 결과 저장</button>
 </div></div>
-
 <div class="modal" id="seriesSetModal"><div class="modal-card">
 <div class="modal-head"><h3 id="seriesSetTitle">세트 점수 입력</h3><button class="close" onclick="closeModal('seriesSetModal')">×</button></div>
-<input id="seriesSetId" type="hidden">
+<input id="seriesSetId" type="hidden"/>
 <div class="grid g2">
-  <div class="field"><label id="seriesTeamALabel">A팀</label><input id="seriesScoreA" type="number" min="0" inputmode="numeric"></div>
-  <div class="field"><label id="seriesTeamBLabel">B팀</label><input id="seriesScoreB" type="number" min="0" inputmode="numeric"></div>
+<div class="field"><label id="seriesTeamALabel">A팀</label><input id="seriesScoreA" inputmode="numeric" min="0" type="number"/></div>
+<div class="field"><label id="seriesTeamBLabel">B팀</label><input id="seriesScoreB" inputmode="numeric" min="0" type="number"/></div>
 </div>
 <div class="notice" style="margin-top:10px">동점은 저장할 수 없습니다. 한 팀이 2승 또는 3승에 도달하면 시리즈가 종료됩니다. 일반 게임은 최종 패배팀이 1인당 2,000원을 부담합니다. 세트 점수가 정확히 8:0이면 즉시 콜드패로 시리즈가 종료되고, 0점 팀은 1인당 4,000원을 부담합니다. 종료 후 팀을 다시 편성합니다.</div>
-<button class="btn dark" style="width:100%;margin-top:14px" onclick="saveSeriesSet()">세트 점수 저장</button>
+<button class="btn dark" onclick="saveSeriesSet()" style="width:100%;margin-top:14px">세트 점수 저장</button>
 </div></div>
-
 <div class="modal" id="resetModal"><div class="modal-card">
-  <div class="modal-head"><h3 style="color:#dc2626">운영 데이터 초기화</h3><button class="close" onclick="closeModal('resetModal')">×</button></div>
-  <div class="notice"><b>삭제 후 복구할 수 없습니다.</b><br>회원 명단은 유지되며 그 외 회비·입출금·모임·참석·팀·경기·게임비·시리즈 데이터가 모두 삭제됩니다.</div>
-  <div class="field" style="margin-top:12px"><label>확인 문구</label><input id="resetConfirmText" placeholder="초기화" autocomplete="off"></div>
-  <div class="field" style="margin-top:10px"><label>초기화 PIN</label><input id="resetPin" type="password" inputmode="numeric" maxlength="4" placeholder="4자리 PIN"></div>
-  <button class="btn red" style="width:100%;margin-top:14px" onclick="executeReset()">정말 초기화</button>
+<div class="modal-head"><h3 style="color:#dc2626">운영 데이터 초기화</h3><button class="close" onclick="closeModal('resetModal')">×</button></div>
+<div class="notice"><b>삭제 후 복구할 수 없습니다.</b><br/>회원 명단은 유지되며 그 외 회비·입출금·모임·참석·팀·경기·게임비·시리즈 데이터가 모두 삭제됩니다.</div>
+<div class="field" style="margin-top:12px"><label>확인 문구</label><input autocomplete="off" id="resetConfirmText" placeholder="초기화"/></div>
+<div class="field" style="margin-top:10px"><label>초기화 PIN</label><input id="resetPin" inputmode="numeric" maxlength="4" placeholder="4자리 PIN" type="password"/></div>
+<button class="btn red" onclick="executeReset()" style="width:100%;margin-top:14px">정말 초기화</button>
 </div></div>
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.6.2"></script><script src="common.js?v=5.6.2"></script><script src="operation.js?v=5.6.2"></script>
 
-<div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.6.1"></script><script src="common.js?v=5.6.1"></script><script src="operation.js?v=5.6.1"></script>
+<nav class="bottom operation-only-nav">
+<div class="bottom-inner operation-bottom">
+<button class="nav" data-view="attendance" onclick="go('attendance')"><b>✓</b>참석</button>
+<button class="nav active" data-view="matchday" onclick="go('matchday')"><b>⚽</b>경기운영</button>
+<button class="nav" onclick="returnToMember()" type="button"><b>↩</b>회원으로</button>
+</div>
+</nav>
 </body></html>

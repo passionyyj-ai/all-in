@@ -1,1 +1,1 @@
-(()=>{if(!('serviceWorker'in navigator))return;window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=5.6.1',{scope:'./'});r.update()}catch(e){console.warn('ALLIN admin PWA registration failed',e)}})})();
+(()=>{if(!('serviceWorker'in navigator))return;window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=5.6.2',{scope:'./'});r.update()}catch(e){console.warn('ALLIN admin PWA registration failed',e)}})})();

@@ -68,21 +68,37 @@ function renderDashboard(){
   $('meetingSummary').innerHTML=next?`<div style="font-size:28px;font-weight:850">${people.length}명 참석 예정</div><div class="row" style="margin-top:10px">${POSITIONS.map(p=>`${badge(p)} <b>${people.filter(x=>x.position===p).length}</b>`).join('')}</div><button class="btn dark" style="width:100%;margin-top:14px" onclick="go('attendance')">참석 현황 보기</button>`:'<div class="empty">예정된 모임이 없습니다.</div>';
   $('recentTx').innerHTML=transactions.slice(0,6).map(t=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb"><span>${t.tx_date} · ${t.category}</span><b class="${t.tx_type==='income'?'money-in':'money-out'}">${t.tx_type==='income'?'+':'-'} ${won(t.amount)}</b></div>`).join('')||'<div class="empty">내역 없음</div>';
 }
+function syncSecondaryPositions(selected=null){
+  if(selected===null)selected=[...document.querySelectorAll('#memberSecondaryPositions input[type=checkbox]:checked')].map(c=>c.value);
+  const primary=$('memberPosition').value;
+  document.querySelectorAll('#memberSecondaryPositions input[type=checkbox]').forEach(c=>{
+    c.disabled=c.value===primary;
+    c.checked=c.value!==primary&&selected.includes(c.value);
+    c.closest('label').classList.toggle('disabled',c.disabled);
+  });
+}
+function selectedSecondaryPositions(){return [...document.querySelectorAll('#memberSecondaryPositions input[type=checkbox]:checked')].map(c=>c.value).filter(p=>p!==$('memberPosition').value)}
+function secondaryPositionBadges(m){const rows=Array.isArray(m.secondary_positions)?m.secondary_positions.filter(p=>POSITIONS.includes(p)&&p!==m.position):[];return rows.length?rows.map(p=>badge(p)).join(' '):'<span class="muted">-</span>'}
 function openMember(id){
-  const m=members.find(x=>x.id===id);$('memberTitle').textContent=m?'회원 수정':'회원 추가';$('memberId').value=m?.id||'';$('memberName').value=m?.name||'';$('memberBirthYear').value=m?.birth_year||'';$('memberPhone').value=m?.phone||'';$('memberPosition').value=m?.position||'공격';$('memberPin').value='';$('memberPin').placeholder=m?'변경할 때만 새 PIN 입력':'4자리 숫자';openModal('memberModal')
+  const m=members.find(x=>x.id===id);$('memberTitle').textContent=m?'회원 수정':'회원 추가';$('memberId').value=m?.id||'';$('memberName').value=m?.name||'';$('memberBirthYear').value=m?.birth_year||'';$('memberPhone').value=m?.phone||'';$('memberPosition').value=m?.position||'공격';syncSecondaryPositions(m?.secondary_positions||[]);$('memberPin').value='';$('memberPin').placeholder=m?'변경할 때만 새 PIN 입력':'4자리 숫자';openModal('memberModal')
 }
 async function saveMember(){
   const id=$('memberId').value,name=$('memberName').value.trim(),pin=$('memberPin').value.trim();if(!name)return toast('이름을 입력하세요.');if((!id&&!/^\d{4}$/.test(pin))||(pin&&!/^\d{4}$/.test(pin)))return toast('PIN은 4자리 숫자입니다.');
-  const payload={name,birth_year:Number($('memberBirthYear').value)||null,phone:$('memberPhone').value.trim()||null,position:$('memberPosition').value};
-  let q=id?sb.from('members').update(payload).eq('id',id):sb.rpc('admin_create_member_v40',{p_name:name,p_birth_year:payload.birth_year,p_phone:payload.phone,p_position:payload.position,p_pin:pin});
-  let {data,error}=await q;if(error)return toast(error.message);
+  const payload={name,birth_year:Number($('memberBirthYear').value)||null,phone:$('memberPhone').value.trim()||null,position:$('memberPosition').value,secondary_positions:selectedSecondaryPositions()};
+  let data,error;
+  if(id){({data,error}=await sb.from('members').update(payload).eq('id',id));}
+  else{
+    ({data,error}=await sb.rpc('admin_create_member_v40',{p_name:name,p_birth_year:payload.birth_year,p_phone:payload.phone,p_position:payload.position,p_pin:pin}));
+    if(!error){const r=await sb.from('members').update({secondary_positions:payload.secondary_positions}).eq('id',data);if(r.error)error=r.error;}
+  }
+  if(error)return toast(error.message);
   if(id&&pin){const r=await sb.rpc('admin_set_member_pin',{p_member_id:id,p_pin:pin});if(r.error)return toast(r.error.message)}
   closeModal('memberModal');toast('회원 저장 완료');await loadAll();
 }
 async function deleteMember(id){if(!confirm('회원을 삭제할까요?'))return;const {error}=await sb.from('members').delete().eq('id',id);if(error)return toast(error.message);await loadAll()}
 function renderMembers(){
-  const q=$('memberSearchAdmin')?.value.trim()||'',p=$('posFilter')?.value||'';const rows=members.filter(m=>(!q||(m.name+(m.phone||'')).includes(q))&&(!p||m.position===p));
-  $('memberBody').innerHTML=rows.map(m=>`<tr><td><b>${m.name}</b></td><td>${m.birth_year||'-'}</td><td>${m.phone||'-'}</td><td>${badge(m.position)}</td><td>••••</td><td><button class="btn small" onclick="openMember('${m.id}')">수정</button> <button class="btn red small" onclick="deleteMember('${m.id}')">삭제</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">회원 없음</td></tr>';
+  const q=$('memberSearchAdmin')?.value.trim()||'',p=$('posFilter')?.value||'';const rows=members.filter(m=>(!q||(m.name+(m.phone||'')).includes(q))&&(!p||(m.position===p||(m.secondary_positions||[]).includes(p))));
+  $('memberBody').innerHTML=rows.map(m=>`<tr><td><b>${m.name}</b></td><td>${m.birth_year||'-'}</td><td>${m.phone||'-'}</td><td>${badge(m.position)}</td><td>${secondaryPositionBadges(m)}</td><td>••••</td><td><button class="btn small" onclick="openMember('${m.id}')">수정</button> <button class="btn red small" onclick="deleteMember('${m.id}')">삭제</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">회원 없음</td></tr>';
 }
 function renderFinance(){
   if(!$('feeMonth').value)$('feeMonth').value=new Date().toISOString().slice(0,7);if(!$('txMonth').value)$('txMonth').value=new Date().toISOString().slice(0,7);$('feeAmount').value=settings.monthly_fee;

@@ -218,3 +218,5 @@ body{
   .member-session-bar{align-items:flex-start}
   .member-logout-btn{padding:7px 10px;font-size:12px}
 }
+
+.delegate-admin-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;border:1px solid #d1d5db;border-radius:14px;background:#f8fafc;color:#1f2937}.delegate-admin-card span{font-size:12px;color:#6b7280;line-height:1.5}.delegate-admin-card .btn{flex:0 0 auto}@media(max-width:560px){.delegate-admin-card{align-items:stretch;flex-direction:column}.delegate-admin-card .btn{width:100%}}

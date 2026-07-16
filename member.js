@@ -72,10 +72,15 @@ async function setAttendance(attending){
 }
 init();
 
+function openDelegateAdmin(){
+  if(!confirm('총무 운영 화면으로 이동할까요?\n관리자 아이디와 비밀번호 인증이 필요합니다.'))return;
+  location.href='admin.html?from=member&app=admin';
+}
+
 async function loadMemberDashboard(){
   if(!sb||!$('memberDashMonth'))return;
   const month=$('memberDashMonth').value||new Date().toISOString().slice(0,7);
-  const {data,error}=await sb.rpc('get_member_dashboard',{p_month:month+'-01'});
+  const {data,error}=await sb.rpc('get_my_member_dashboard',{p_month:month+'-01',p_member_id:loginMember?.id,p_pin:loginPin});
   if(error){console.error(error);return toast('현황 조회 중 오류가 발생했습니다.')}
   const d=data||{}, fee=d.fee||{}, cash=d.cash||{}, dues=d.game_dues||{};
   $('feeDashboard').innerHTML=`<div class="grid g4">

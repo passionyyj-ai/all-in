@@ -1,22 +1,141 @@
 let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], threeTeamSeries=[], threeTeamGames=[], threeTeamFeatureReady=true, settings={monthly_fee:20000};
 const openModal=id=>$(id).classList.add('show'),closeModal=id=>$(id).classList.remove('show');
+const operationMode=new URLSearchParams(location.search).get('mode')==='operation';
+let operationMember=null;
+
+async function validateOperationMember(){
+  try{
+    const saved=JSON.parse(sessionStorage.getItem('allin_member_session')||'null');
+    if(!saved?.member?.name||!saved?.pin)return false;
+    const {data,error}=await sb.rpc('member_login_v53',{
+      p_name:saved.member.name,
+      p_pin:saved.pin
+    });
+    if(error||!data?.ok)return false;
+    operationMember=data.member;
+    return true;
+  }catch(e){
+    console.error('operation member validation failed',e);
+    return false;
+  }
+}
 async function init(){
   if(!requireConfig())return;
+
+  if(operationMode){
+    const valid=await validateOperationMember();
+    if(!valid){
+      sessionStorage.removeItem('allin_member_session');
+      toast('회원 세션이 만료되었습니다. 다시 로그인하세요.');
+      location.replace('index.html');
+      return;
+    }
+
+    // 운영 모드는 회원 PIN 검증 후 관리자 입력 화면 없이 제한된 운영 기능으로 진입한다.
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session){
+      const {error}=await sb.auth.signInWithPassword({
+        email:'admin@allin.club',
+        password:'1111'
+      });
+      if(error){
+        console.error(error);
+        toast('운영 권한 연결에 실패했습니다. 총무에게 문의하세요.');
+        location.replace('index.html');
+        return;
+      }
+    }
+    await enterApp(true);
+    return;
+  }
+
   const {data:{session}}=await sb.auth.getSession();
-  if(session) await enterApp(); else {$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}
-  sb.auth.onAuthStateChange((_e,s)=>{if(!s){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}});
+  if(session)await enterApp(false);
+  else{
+    $('loginView').classList.remove('hidden');
+    $('appView').classList.add('hidden');
+  }
+  sb.auth.onAuthStateChange((_e,s)=>{
+    if(!s&&!operationMode){
+      $('loginView').classList.remove('hidden');
+      $('appView').classList.add('hidden');
+    }
+  });
 }
 async function login(){
- if(!requireConfig())return;
- if($('email').value.trim()!=='admin'||$('password').value!=='1111')return toast('아이디 또는 비밀번호가 올바르지 않습니다.');
- const {error}=await sb.auth.signInWithPassword({email:'admin@allin.club',password:'1111'});
- if(error)return toast('Supabase 관리자 계정 설정이 필요합니다. README를 확인하세요.');
- await enterApp();
+  if(!requireConfig())return;
+  if($('email').value.trim()!=='admin'||$('password').value!=='1111')
+    return toast('아이디 또는 비밀번호가 올바르지 않습니다.');
+  const {error}=await sb.auth.signInWithPassword({
+    email:'admin@allin.club',
+    password:'1111'
+  });
+  if(error)return toast('Supabase 관리자 계정 설정이 필요합니다. README를 확인하세요.');
+  await enterApp(false);
 }
-async function logout(){await sb.auth.signOut();location.reload()}
-async function enterApp(){
-  const {data,error}=await sb.rpc('is_admin');if(error||!data){await sb.auth.signOut();return toast('관리자 권한이 없습니다.')}
-  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');await loadAll();subscribeRealtime();
+async function logout(){
+  await sb.auth.signOut();
+  if(operationMode){
+    location.replace('index.html');
+  }else{
+    location.reload();
+  }
+}
+function exitOperationMode(){
+  location.replace('index.html');
+}
+function applyOperationMode(){
+  if(!operationMode)return;
+
+  document.body.classList.add('operation-mode');
+  $('loginView').classList.add('hidden');
+  $('operationModeBanner')?.classList.remove('hidden');
+  $('operationUserBadge')?.classList.remove('hidden');
+
+  const operatorName=operationMember?.name||'회원';
+  if($('operationModeUser'))$('operationModeUser').textContent=` · 현재 운영자 ${operatorName}`;
+  if($('operationUserBadge'))$('operationUserBadge').textContent=`${operatorName} 대행`;
+  if($('adminPageTitle'))$('adminPageTitle').textContent='올인 족구단 · 경기 운영';
+  if($('adminPageSubtitle'))$('adminPageSubtitle').textContent='참석 관리 · 팀 편성 · 경기 결과 입력';
+
+  document.querySelectorAll('[data-admin-only="true"]').forEach(el=>el.classList.add('hidden'));
+  ['dashboard','members','finance','games','receivables'].forEach(id=>{
+    const el=$(id);
+    if(el)el.classList.remove('active');
+  });
+
+  const attendanceNav=document.querySelector('.nav[data-view="attendance"]');
+  const matchdayNav=document.querySelector('.nav[data-view="matchday"]');
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('active'));
+  if(matchdayNav)matchdayNav.classList.add('active');
+
+  if($('attendance'))$('attendance').classList.remove('active');
+  if($('matchday'))$('matchday').classList.add('active');
+
+  const bottom=document.querySelector('.bottom-inner');
+  if(bottom){
+    bottom.style.gridTemplateColumns='repeat(2,1fr)';
+    [...bottom.children].forEach(btn=>{
+      const allowed=['attendance','matchday'].includes(btn.dataset.view);
+      btn.classList.toggle('hidden',!allowed);
+    });
+  }
+
+  // 운영 모드에서는 모임 생성은 숨기고, 기존 모임 참석 수정과 팀/경기 운영만 허용한다.
+  document.querySelectorAll('#attendance .title button[onclick="createMeeting()"]').forEach(b=>b.classList.add('hidden'));
+}
+async function enterApp(isOperation=false){
+  const {data,error}=await sb.rpc('is_admin');
+  if(error||!data){
+    await sb.auth.signOut();
+    return toast('운영 권한이 없습니다.');
+  }
+  $('loginView').classList.add('hidden');
+  $('appView').classList.remove('hidden');
+  if(isOperation)applyOperationMode();
+  await loadAll();
+  subscribeRealtime();
+  if(isOperation)go('matchday');
 }
 async function loadAll(){
   // 기존 운영 데이터는 3팀 확장 기능과 분리해서 먼저 읽는다.
@@ -85,7 +204,13 @@ function subscribeRealtime(){
   if(rtStarted)return;rtStarted=true;
   sb.channel('admin-live').on('postgres_changes',{event:'*',schema:'public',table:'attendance'},()=>loadAll()).on('postgres_changes',{event:'*',schema:'public',table:'transactions'},()=>loadAll()).subscribe();
 }
-function go(id){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));document.querySelectorAll('.nav').forEach(v=>v.classList.toggle('active',v.dataset.view===id));renderAll();scrollTo({top:0,behavior:'smooth'})}
+function go(id){
+  if(operationMode&&!['attendance','matchday'].includes(id))id='matchday';
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));
+  document.querySelectorAll('.nav').forEach(v=>v.classList.toggle('active',v.dataset.view===id));
+  renderAll();
+  scrollTo({top:0,behavior:'smooth'});
+}
 function renderAll(){renderSelects();renderDashboard();renderMembers();renderFinance();renderAttendance();renderGames();renderMatchday();renderReceivables();renderSystemManagement()}
 function period(offset=0){const d=new Date();d.setMonth(d.getMonth()+offset);const key=d.toISOString().slice(0,7),rows=transactions.filter(t=>monthKey(t.tx_date)===key);return{key,income:rows.filter(t=>t.tx_type==='income').reduce((s,t)=>s+Number(t.amount),0),expense:rows.filter(t=>t.tx_type==='expense').reduce((s,t)=>s+Number(t.amount),0)}}
 function renderDashboard(){
@@ -646,8 +771,12 @@ function renderReceivables(){
   if(status==='unpaid')rows=rows.filter(x=>x.unpaid>0);
   if(status==='paid')rows=rows.filter(x=>x.paid>0);
   const total=rows.reduce((s,x)=>s+x.total,0),unpaid=rows.reduce((s,x)=>s+x.unpaid,0),paid=rows.reduce((s,x)=>s+x.paid,0);
-  const gameRows=status==='unpaid'?monthRows.filter(d=>d.status==='unpaid'):status==='paid'?monthRows.filter(d=>d.status==='paid'):monthRows;
-  const actualGameCount=new Set(gameRows.map(d=>d.series_id||d.game_id).filter(Boolean)).size;
+  const actualGameCount=new Set(monthRows.map(d=>{
+    if(d.three_team_series_id)return 'T:'+d.three_team_series_id;
+    if(d.series_id)return 'S:'+d.series_id;
+    if(d.game_id)return 'G:'+d.game_id;
+    return 'D:'+d.id;
+  })).size;
   $('receivableKpis').innerHTML=[['청구액',won(total)],['게임비 잔액',won(unpaid)],['납부액',won(paid)],['게임 횟수',actualGameCount+'경기']].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
   $('duesBody').innerHTML=rows.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr>
     <td><b>${x.name}</b></td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td>

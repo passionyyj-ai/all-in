@@ -7,17 +7,59 @@ async function init(){
   sb.auth.onAuthStateChange((_e,s)=>{if(!s){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}});
 }
 async function login(){
- if(!requireConfig())return;
- if($('email').value.trim()!=='admin'||$('password').value!=='1111')return toast('아이디 또는 비밀번호가 올바르지 않습니다.');
- const {error}=await sb.auth.signInWithPassword({email:'admin@allin.club',password:'1111'});
- if(error)return toast('Supabase 관리자 계정 설정이 필요합니다. README를 확인하세요.');
- await enterApp();
+  if(!requireConfig())return;
+  const userId=$('email').value.trim();
+  const password=$('password').value;
+  if(userId!=='admin'||!password)return toast('아이디와 비밀번호를 입력하세요.');
+  const {error}=await sb.auth.signInWithPassword({
+    email:'admin@allin.club',
+    password
+  });
+  if(error)return toast('아이디 또는 비밀번호가 올바르지 않습니다.');
+  await enterApp();
 }
 async function logout(){await sb.auth.signOut();location.reload()}
 async function enterApp(){
   const {data,error}=await sb.rpc('is_admin');if(error||!data){await sb.auth.signOut();return toast('관리자 권한이 없습니다.')}
   $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');await loadAll();subscribeRealtime();
 }
+
+function openAdminPasswordModal(){
+  $('adminCurrentPassword').value='';
+  $('adminNewPassword').value='';
+  $('adminNewPasswordConfirm').value='';
+  openModal('adminPasswordModal');
+}
+async function changeAdminPassword(){
+  const current=$('adminCurrentPassword').value;
+  const next=$('adminNewPassword').value;
+  const confirmNext=$('adminNewPasswordConfirm').value;
+
+  if(!current||!next||!confirmNext)return toast('비밀번호를 모두 입력하세요.');
+  if(next.length<8)return toast('새 비밀번호는 8자 이상으로 설정하세요.');
+  if(next!==confirmNext)return toast('새 비밀번호 확인이 일치하지 않습니다.');
+  if(current===next)return toast('현재 비밀번호와 다른 비밀번호를 입력하세요.');
+
+  // 현재 비밀번호 재인증
+  const {error:verifyError}=await sb.auth.signInWithPassword({
+    email:'admin@allin.club',
+    password:current
+  });
+  if(verifyError)return toast('현재 비밀번호가 올바르지 않습니다.');
+
+  // Supabase Auth 관리자 계정 비밀번호 변경
+  const {error:updateError}=await sb.auth.updateUser({password:next});
+  if(updateError)return toast('비밀번호 변경 실패: '+updateError.message);
+
+  closeModal('adminPasswordModal');
+  toast('관리자 비밀번호를 변경했습니다. 새 비밀번호로 다시 로그인하세요.');
+
+  setTimeout(async()=>{
+    await sb.auth.signOut();
+    location.reload();
+  },1200);
+}
+
 async function loadAll(){
   // 기존 운영 데이터는 3팀 확장 기능과 분리해서 먼저 읽는다.
   // 확장 테이블이 아직 없더라도 회원/모임/회비 화면은 계속 정상 표시되어야 한다.

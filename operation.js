@@ -29,17 +29,11 @@ async function init(){
 
   // 기존 운영 RPC를 사용하기 위한 내부 세션 연결.
   // 사용자에게 관리자 로그인 화면은 표시하지 않는다.
-  let {data:{session}}=await sb.auth.getSession();
+  const {data:{session}}=await sb.auth.getSession();
   if(!session){
-    const {error}=await sb.auth.signInWithPassword({
-      email:'admin@allin.club',
-      password:'1111'
-    });
-    if(error){
-      console.error(error);
-      toast('경기 운영 연결에 실패했습니다.');
-      return;
-    }
+    toast('경기 운영 권한 세션이 없습니다. 총무 앱에서 한 번 로그인한 뒤 다시 이용하세요.');
+    setTimeout(()=>location.replace('index.html'),1500);
+    return;
   }
 
   const {data,error}=await sb.rpc('is_admin');

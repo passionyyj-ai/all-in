@@ -265,3 +265,67 @@ body{
 }
 .referee-banner span{font-size:18px;font-weight:900}
 .referee-banner small{margin-left:auto;color:#a16207}
+
+.attendance-modal-card{max-width:760px}
+.attendance-edit-list{
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+  max-height:58vh;
+  overflow:auto;
+  padding-right:3px;
+}
+.attendance-edit-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:11px 12px;
+  border:1px solid #e5e7eb;
+  border-radius:13px;
+  background:#fff;
+}
+.attendance-edit-member{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+}
+.attendance-state-buttons{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(58px,1fr));
+  gap:6px;
+}
+.attendance-state-btn{
+  border:1px solid #d1d5db;
+  border-radius:10px;
+  background:#f8fafc;
+  color:#64748b;
+  padding:8px 10px;
+  font-weight:800;
+  cursor:pointer;
+}
+.attendance-state-btn.attending.selected{
+  background:#dcfce7;
+  border-color:#22c55e;
+  color:#15803d;
+}
+.attendance-state-btn.absent.selected{
+  background:#fee2e2;
+  border-color:#ef4444;
+  color:#b91c1c;
+}
+.attendance-state-btn.pending.selected{
+  background:#fef3c7;
+  border-color:#f59e0b;
+  color:#a16207;
+}
+@media(max-width:620px){
+  .attendance-edit-row{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .attendance-state-buttons{
+    width:100%;
+  }
+}

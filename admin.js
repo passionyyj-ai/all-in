@@ -321,8 +321,53 @@ function renderAttendance(){
   const m=currentMeeting();if(!m){$('attendanceSummary').innerHTML='<div class="empty">모임 없음</div>';return}const people=attendingPeople(m);
   $('attendanceSummary').innerHTML=`<div class="grid g4">${POSITIONS.map(p=>`<div class="kpi"><div class="label">${p}</div><div class="value">${people.filter(x=>x.position===p).length}명</div></div>`).join('')}</div><div class="row" style="margin-top:12px">${people.map(x=>`<span class="badge ${posClass[x.position]}">${x.name} · ${x.position}</span>`).join('')||'<span class="empty">참석자 없음</span>'}</div>`;renderTeams();
 }
-function openAttendance(){const m=currentMeeting();if(!m)return;$('attendanceChecks').innerHTML=members.map(x=>{const yes=attendance.some(a=>a.meeting_id===m.id&&a.member_id===x.id&&a.attending);return`<label class="row" style="border:1px solid #e5e7eb;border-radius:12px;padding:10px"><input type="checkbox" value="${x.id}" ${yes?'checked':''}><b>${x.name}</b>${badge(x.position)}</label>`}).join('');openModal('attendanceModal')}
-async function saveAttendance(){const m=currentMeeting(),checked=[...$('attendanceChecks').querySelectorAll('input:checked')].map(x=>x.value);const {error}=await sb.rpc('admin_replace_attendance',{p_meeting_id:m.id,p_member_ids:checked});if(error)return toast(error.message);closeModal('attendanceModal');await loadAll()}
+function openAttendance(){
+  const m=currentMeeting();
+  if(!m)return;
+
+  $('attendanceChecks').innerHTML=members.map(x=>{
+    const response=attendance.find(a=>a.meeting_id===m.id&&a.member_id===x.id);
+    const state=response?response.attending===true?'attending':'absent':'pending';
+
+    return `<div class="attendance-edit-row" data-member-id="${x.id}" data-state="${state}">
+      <div class="attendance-edit-member"><b>${x.name}</b>${badge(x.position)}</div>
+      <div class="attendance-state-buttons">
+        <button type="button" class="attendance-state-btn attending ${state==='attending'?'selected':''}" onclick="setAttendanceEditState(this,'attending')">참석</button>
+        <button type="button" class="attendance-state-btn absent ${state==='absent'?'selected':''}" onclick="setAttendanceEditState(this,'absent')">불참</button>
+        <button type="button" class="attendance-state-btn pending ${state==='pending'?'selected':''}" onclick="setAttendanceEditState(this,'pending')">미응답</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  openModal('attendanceModal');
+}
+
+function setAttendanceEditState(button,state){
+  const row=button.closest('.attendance-edit-row');
+  if(!row)return;
+  row.dataset.state=state;
+  row.querySelectorAll('.attendance-state-btn').forEach(btn=>btn.classList.remove('selected'));
+  button.classList.add('selected');
+}
+async function saveAttendance(){
+  const m=currentMeeting();
+  if(!m)return;
+
+  const rows=[...$('attendanceChecks').querySelectorAll('.attendance-edit-row')];
+  const attendingIds=rows.filter(row=>row.dataset.state==='attending').map(row=>row.dataset.memberId);
+  const absentIds=rows.filter(row=>row.dataset.state==='absent').map(row=>row.dataset.memberId);
+
+  const {error}=await sb.rpc('admin_replace_attendance_v576',{
+    p_meeting_id:m.id,
+    p_attending_member_ids:attendingIds,
+    p_absent_member_ids:absentIds
+  });
+
+  if(error)return toast(error.message);
+  closeModal('attendanceModal');
+  toast(`참석 ${attendingIds.length}명 · 불참 ${absentIds.length}명으로 저장했습니다.`);
+  await loadAll();
+}
 async function generateTeams(mode='balanced'){
   const m=currentMeeting();if(!m)return;
   const active=matchSeries.find(s=>s.meeting_id===m.id&&s.status==='active')||threeTeamSeries.find(s=>s.meeting_id===m.id&&s.status==='active');

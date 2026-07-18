@@ -491,7 +491,7 @@ function renderMatchday(){
       <div class="field"><label>경기 방식</label><select id="seriesBestOf"><option value="3">3판 2승제</option><option value="5">5판 3승제</option></select></div>
       ${refereeRequired?`<div class="field"><label>심판 *</label><select id="seriesReferee"><option value="">심판 선택</option>${people.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select></div>`:''}
     </div>
-    ${refereeRequired?'<div class="notice" style="margin-top:10px">참석자가 9~11명일 때는 참석자 중 한 명을 심판으로 지정합니다. 심판은 게임비와 경기횟수에서 제외됩니다.</div>':''}
+    ${refereeRequired?'<div class="notice" style="margin-top:10px">참석 인원이 9~11명일 때에는 참석자 중 한 명을 심판으로 지정합니다. 심판은 게임비와 경기횟수에서 제외됩니다.</div>':''}
     <button class="btn dark" style="width:100%;margin-top:12px" onclick="startSeries()">시리즈 시작</button>`;
   }else{
     $('seriesStartArea').innerHTML='<div class="empty">2개 이상의 팀을 먼저 편성하세요.</div>';
@@ -581,11 +581,12 @@ async function startSeries(){
   const teamA=$('seriesTeamA')?.value;
   const teamB=$('seriesTeamB')?.value;
   const bestOf=Number($('seriesBestOf')?.value||3);
-  const refereeId=(people.length>=9&&people.length<=11)?($('seriesReferee')?.value||null):null;
+  const refereeEligible=people.length>=9&&people.length<=11;
+  const refereeId=refereeEligible?($('seriesReferee')?.value||null):null;
   const people=attendingPeople(m);
 
   if(!teamA||!teamB||teamA===teamB)return toast('서로 다른 두 팀을 선택하세요.');
-  if(people.length>=9&&people.length<=11&&!refereeId)return toast('참석자가 9~11명일 때는 심판을 선택하세요.');
+  if(people.length>=9&&people.length<=11&&!refereeId)return toast('참석 인원이 9~11명일 때에는 심판을 선택하세요.');
 
   const {data,error}=await sb.rpc('admin_start_match_series_v57',{
     p_meeting_id:m.id,

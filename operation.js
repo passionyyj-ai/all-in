@@ -1,6 +1,7 @@
 let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], threeTeamSeries=[], threeTeamGames=[], threeTeamFeatureReady=true, settings={monthly_fee:20000};
 const openModal=id=>$(id).classList.add('show'),closeModal=id=>$(id).classList.remove('show');
 let operationMember=null;
+let operationPin='';
 
 async function validateMemberSession(){
   try{
@@ -12,6 +13,7 @@ async function validateMemberSession(){
     });
     if(error||!data?.ok)return false;
     operationMember=data.member;
+    operationPin=saved.pin;
     return true;
   }catch(e){
     console.error(e);
@@ -27,87 +29,53 @@ async function init(){
     return;
   }
 
-  // 기존 운영 RPC를 사용하기 위한 내부 세션 연결.
-  // 사용자에게 관리자 로그인 화면은 표시하지 않는다.
-  const {data:{session}}=await sb.auth.getSession();
-  if(!session){
-    toast('경기 운영 권한 세션이 없습니다. 총무 앱에서 한 번 로그인한 뒤 다시 이용하세요.');
-    setTimeout(()=>location.replace('index.html'),1500);
-    return;
-  }
-
-  const {data,error}=await sb.rpc('is_admin');
-  if(error||!data){
-    toast('경기 운영 권한을 연결할 수 없습니다.');
-    return;
-  }
-
   if($('operationOperator'))$('operationOperator').textContent=`현재 운영자 · ${operationMember.name}`;
   await loadAll();
   subscribeRealtime();
   go('matchday');
 }
+
+function operationAuthParams(){
+  return {
+    p_operator_member_id:operationMember.id,
+    p_operator_pin:operationPin
+  };
+}
+
 function returnToMember(){location.replace('index.html')}
 async function logout(){returnToMember()}
 async function loadAll(){
-  // 기존 운영 데이터는 3팀 확장 기능과 분리해서 먼저 읽는다.
-  // 확장 테이블이 아직 없더라도 회원/모임/회비 화면은 계속 정상 표시되어야 한다.
-  const coreQueries=await Promise.all([
-    sb.from('members').select('*').order('name'),
-    sb.from('meetings').select('*').order('meeting_date',{ascending:false}),
-    sb.from('attendance').select('*'),
-    sb.from('teams').select('*'),
-    sb.from('team_members').select('*'),
-    sb.from('transactions').select('*').order('tx_date',{ascending:false}),
-    sb.from('fees').select('*'),
-    sb.from('fee_payments').select('*').order('paid_date',{ascending:false}),
-    sb.from('games').select('*'),
-    sb.from('game_dues').select('*').order('due_date',{ascending:false}),
-    sb.from('match_series').select('*').order('created_at',{ascending:false}),
-    sb.from('series_sets').select('*').order('set_no',{ascending:true}),
-    sb.from('club_settings').select('*').eq('id',1).maybeSingle()
-  ]);
-
-  const requiredIndexes=[0,1,2,3,4,5,6,8,9,10,11,12];
-  const coreError=requiredIndexes.map(i=>coreQueries[i]?.error).find(Boolean);
-  if(coreError){
-    console.error('ALLIN core data load errors',coreQueries.map(q=>q?.error));
-    return toast('기존 데이터 로드 오류: '+coreError.message);
+  if(!operationMember?.id||!operationPin){
+    return toast('회원 운영 세션이 만료되었습니다.');
   }
 
-  members=coreQueries[0].data||[];
-  meetings=coreQueries[1].data||[];
-  attendance=coreQueries[2].data||[];
-  teams=coreQueries[3].data||[];
-  teamMembers=coreQueries[4].data||[];
-  transactions=coreQueries[5].data||[];
-  fees=coreQueries[6].data||[];
-  feePayments=coreQueries[7].error?[]:(coreQueries[7].data||[]);
-  if(coreQueries[7].error)console.warn('fee_payments load warning',coreQueries[7].error);
-  games=coreQueries[8].data||[];
-  gameDues=coreQueries[9].data||[];
-  matchSeries=coreQueries[10].data||[];
-  seriesSets=coreQueries[11].data||[];
-  settings=coreQueries[12].data||{id:1,monthly_fee:20000};
+  const {data,error}=await sb.rpc('operation_get_data',{
+    p_member_id:operationMember.id,
+    p_pin:operationPin
+  });
 
-  // 3팀 확장 데이터는 선택적으로 읽는다.
-  // SQL 미적용/권한 오류가 있어도 기존 데이터 배열을 건드리지 않는다.
-  const optionalQueries=await Promise.all([
-    sb.from('three_team_series').select('*').order('created_at',{ascending:false}),
-    sb.from('three_team_games').select('*').order('game_no',{ascending:true})
-  ]);
-
-  const optionalError=optionalQueries.map(q=>q?.error).find(Boolean);
-  if(optionalError){
-    threeTeamFeatureReady=false;
-    threeTeamSeries=[];
-    threeTeamGames=[];
-    console.warn('3팀 시리즈 기능 비활성화:',optionalQueries.map(q=>q?.error));
-  }else{
-    threeTeamFeatureReady=true;
-    threeTeamSeries=optionalQueries[0].data||[];
-    threeTeamGames=optionalQueries[1].data||[];
+  if(error){
+    console.error('operation_get_data error',error);
+    toast(error.message||'경기 운영 데이터를 불러오지 못했습니다.');
+    return;
   }
+
+  members=data?.members||[];
+  meetings=data?.meetings||[];
+  attendance=data?.attendance||[];
+  teams=data?.teams||[];
+  teamMembers=data?.team_members||[];
+  games=data?.games||[];
+  matchSeries=data?.match_series||[];
+  seriesSets=data?.series_sets||[];
+  threeTeamSeries=data?.three_team_series||[];
+  threeTeamGames=data?.three_team_games||[];
+  settings=data?.settings||{id:1,monthly_fee:20000};
+  transactions=[];
+  fees=[];
+  feePayments=[];
+  gameDues=[];
+  threeTeamFeatureReady=true;
 
   renderAll();
 }
@@ -302,13 +270,13 @@ function renderAttendance(){
   $('attendanceSummary').innerHTML=`<div class="grid g4">${POSITIONS.map(p=>`<div class="kpi"><div class="label">${p}</div><div class="value">${people.filter(x=>x.position===p).length}명</div></div>`).join('')}</div><div class="row" style="margin-top:12px">${people.map(x=>`<span class="badge ${posClass[x.position]}">${x.name} · ${x.position}</span>`).join('')||'<span class="empty">참석자 없음</span>'}</div>`;renderTeams();
 }
 function openAttendance(){const m=currentMeeting();if(!m)return;$('attendanceChecks').innerHTML=members.map(x=>{const yes=attendance.some(a=>a.meeting_id===m.id&&a.member_id===x.id&&a.attending);return`<label class="row" style="border:1px solid #e5e7eb;border-radius:12px;padding:10px"><input type="checkbox" value="${x.id}" ${yes?'checked':''}><b>${x.name}</b>${badge(x.position)}</label>`}).join('');openModal('attendanceModal')}
-async function saveAttendance(){const m=currentMeeting(),checked=[...$('attendanceChecks').querySelectorAll('input:checked')].map(x=>x.value);const {error}=await sb.rpc('admin_replace_attendance',{p_meeting_id:m.id,p_member_ids:checked});if(error)return toast(error.message);closeModal('attendanceModal');await loadAll()}
+async function saveAttendance(){const m=currentMeeting(),checked=[...$('attendanceChecks').querySelectorAll('input:checked')].map(x=>x.value);const {error}=await sb.rpc('operation_replace_attendance',{...operationAuthParams(),p_meeting_id:m.id,p_member_ids:checked});if(error)return toast(error.message);closeModal('attendanceModal');await loadAll()}
 async function generateTeams(mode='balanced'){
   const m=currentMeeting();if(!m)return;
   const active=matchSeries.find(s=>s.meeting_id===m.id&&s.status==='active')||threeTeamSeries.find(s=>s.meeting_id===m.id&&s.status==='active');
   if(active)return toast('진행 중인 시리즈를 먼저 종료하세요.');
-  const rpc=mode==='random'?'admin_generate_random_teams_v51':'admin_generate_balanced_teams_v51';
-  const {data,error}=await sb.rpc(rpc,{p_meeting_id:m.id});
+  const rpc=mode==='random'?'operation_generate_random_teams':'operation_generate_balanced_teams';
+  const {data,error}=await sb.rpc(rpc,{...operationAuthParams(),p_meeting_id:m.id});
   if(error)return toast(error.message);
   toast(`${mode==='random'?'완전 랜덤':'포지션 균형'} 팀 ${data?.team_count||0}개 생성`);
   await loadAll()
@@ -321,7 +289,7 @@ async function changeMemberTeam(memberId,teamId){
   const m=currentMeeting();if(!m||!teamId)return;
   const active=matchSeries.find(s=>s.meeting_id===m.id&&s.status==='active')||threeTeamSeries.find(s=>s.meeting_id===m.id&&s.status==='active');
   if(active)return toast('진행 중인 시리즈에서는 팀을 변경할 수 없습니다.');
-  const {error}=await sb.rpc('admin_assign_member_team_v51',{p_meeting_id:m.id,p_member_id:memberId,p_team_id:teamId});
+  const {error}=await sb.rpc('operation_assign_member_team',{...operationAuthParams(),p_meeting_id:m.id,p_member_id:memberId,p_team_id:teamId});
   if(error)return toast(error.message);
   toast('팀 배정을 변경했습니다.');await loadAll();
 }
@@ -471,7 +439,7 @@ function renderMatchday(){
       <div class="field"><label>경기 방식</label><select id="seriesBestOf"><option value="3">3판 2승제</option><option value="5">5판 3승제</option></select></div>
       ${refereeRequired?`<div class="field"><label>심판 *</label><select id="seriesReferee"><option value="">심판 선택</option>${people.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select></div>`:''}
     </div>
-    ${refereeRequired?'<div class="notice" style="margin-top:10px">참석자가 9~11명일 때는 참석자 중 한 명을 심판으로 지정합니다. 심판은 게임비와 경기횟수에서 제외됩니다.</div>':''}
+    ${refereeRequired?'<div class="notice" style="margin-top:10px">참석 인원이 9~11명일 때에는 참석자 중 한 명을 심판으로 지정합니다. 심판은 게임비와 경기횟수에서 제외됩니다.</div>':''}
     <button class="btn dark" style="width:100%;margin-top:12px" onclick="startSeries()">시리즈 시작</button>`;
   }else{
     $('seriesStartArea').innerHTML='<div class="empty">2개 이상의 팀을 먼저 편성하세요.</div>';
@@ -488,7 +456,7 @@ async function startThreeTeamSeries(){
   if(!m)return toast('모임을 선택하세요.');
   const ts=teams.filter(t=>t.meeting_id===m.id);
   if(ts.length!==3)return toast('3팀 단판 시리즈는 정확히 3팀일 때만 시작할 수 있습니다.');
-  const {error}=await sb.rpc('admin_start_three_team_series',{p_meeting_id:m.id});
+  const {error}=await sb.rpc('operation_start_three_team_series',{...operationAuthParams(),p_meeting_id:m.id});
   if(error)return toast(error.message);
   toast('3팀 단판 시리즈를 시작했습니다.');
   await loadAll();
@@ -535,7 +503,7 @@ async function saveThreeTeamGame(){
   const a=Number($('threeTeamScoreA').value),b=Number($('threeTeamScoreB').value);
   if(Number.isNaN(a)||Number.isNaN(b)||a<0||b<0)return toast('점수를 확인하세요.');
   if(a===b)return toast('동점은 저장할 수 없습니다.');
-  const {data,error}=await sb.rpc('admin_record_three_team_game',{p_series_id:id,p_score_a:a,p_score_b:b});
+  const {data,error}=await sb.rpc('operation_record_three_team_game',{...operationAuthParams(),p_series_id:id,p_score_a:a,p_score_b:b});
   if(error)return toast(error.message);
   closeModal('threeTeamScoreModal');
   if(data?.completed){
@@ -551,7 +519,7 @@ async function saveThreeTeamGame(){
 }
 async function cancelThreeTeamSeries(id){
   if(!confirm('3팀 시리즈를 취소할까요? 입력한 단판 기록도 삭제됩니다.'))return;
-  const {error}=await sb.rpc('admin_cancel_three_team_series',{p_series_id:id});
+  const {error}=await sb.rpc('operation_cancel_three_team_series',{...operationAuthParams(),p_series_id:id});
   if(error)return toast(error.message);
   toast('3팀 시리즈를 취소했습니다.');
   await loadAll();
@@ -561,13 +529,15 @@ async function startSeries(){
   const teamA=$('seriesTeamA')?.value;
   const teamB=$('seriesTeamB')?.value;
   const bestOf=Number($('seriesBestOf')?.value||3);
-  const refereeId=(people.length>=9&&people.length<=11)?($('seriesReferee')?.value||null):null;
+  const refereeEligible=people.length>=9&&people.length<=11;
+  const refereeId=refereeEligible?($('seriesReferee')?.value||null):null;
   const people=attendingPeople(m);
 
   if(!teamA||!teamB||teamA===teamB)return toast('서로 다른 두 팀을 선택하세요.');
-  if(people.length>=9&&people.length<=11&&!refereeId)return toast('참석자가 9~11명일 때는 심판을 선택하세요.');
+  if(people.length>=9&&people.length<=11&&!refereeId)return toast('참석 인원이 9~11명일 때에는 심판을 선택하세요.');
 
-  const {data,error}=await sb.rpc('admin_start_match_series_v57',{
+  const {data,error}=await sb.rpc('operation_start_match_series',{
+    ...operationAuthParams(),
     p_meeting_id:m.id,
     p_team_a_id:teamA,
     p_team_b_id:teamB,
@@ -611,7 +581,7 @@ async function saveSeriesSet(){
   const id=$('seriesSetId').value,a=Number($('seriesScoreA').value),b=Number($('seriesScoreB').value);
   if(Number.isNaN(a)||Number.isNaN(b)||a<0||b<0)return toast('점수를 확인하세요.');
   if(a===b)return toast('동점은 저장할 수 없습니다.');
-  const {data,error}=await sb.rpc('admin_record_series_set',{p_series_id:id,p_score_a:a,p_score_b:b});
+  const {data,error}=await sb.rpc('operation_record_series_set',{...operationAuthParams(),p_series_id:id,p_score_a:a,p_score_b:b});
   if(error)return toast(error.message);
   closeModal('seriesSetModal');
   if(data?.completed)toast(`${data.cold_ended?'8:0 콜드패 · 시리즈 즉시 종료':'시리즈 종료'} · ${data.winner_name} 승 / 패배팀 게임비 ${won(data.fee_amount)} 청구`);
@@ -620,7 +590,7 @@ async function saveSeriesSet(){
 }
 async function cancelSeries(id){
   if(!confirm('이 시리즈를 취소할까요? 입력된 세트 기록도 삭제됩니다.'))return;
-  const {error}=await sb.rpc('admin_cancel_match_series',{p_series_id:id});
+  const {error}=await sb.rpc('operation_cancel_match_series',{...operationAuthParams(),p_series_id:id});
   if(error)return toast(error.message);
   toast('시리즈 취소 완료');await loadAll()
 }

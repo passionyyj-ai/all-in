@@ -623,12 +623,14 @@ async function cancelThreeTeamSeries(id){
 }
 async function startSeries(){
   const m=matchMeeting();
+  if(!m)return toast('운영할 모임을 선택하세요.');
+
+  const people=attendingPeople(m);
   const teamA=$('seriesTeamA')?.value;
   const teamB=$('seriesTeamB')?.value;
   const bestOf=Number($('seriesBestOf')?.value||3);
   const refereeEligible=people.length>=9&&people.length<=11;
   const refereeId=refereeEligible?($('seriesReferee')?.value||null):null;
-  const people=attendingPeople(m);
 
   if(!teamA||!teamB||teamA===teamB)return toast('서로 다른 두 팀을 선택하세요.');
   if(people.length>=9&&people.length<=11&&!refereeId)return toast('참석 인원이 9~11명일 때에는 심판을 선택하세요.');

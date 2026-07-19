@@ -379,23 +379,29 @@ async function generateTeams(mode='balanced'){
   await loadAll()
 }
 function teamMemberRow(x,currentTeamId,ts,locked=false){
-  const options=ts.map(t=>`<option value="${t.id}" ${t.id===currentTeamId?'selected':''}>${t.team_name}</option>`).join('');
+  const options=`<option value="" ${!currentTeamId?'selected':''}>대기</option>`+
+    ts.map(t=>`<option value="${t.id}" ${t.id===currentTeamId?'selected':''}>${t.team_name}</option>`).join('');
   return `<div class="team-member team-member-manage"><div><b>${x.name}</b> ${badge(x.position)}</div><select class="team-assign-select" ${locked?'disabled':''} onchange="changeMemberTeam('${x.id}',this.value)">${options}</select></div>`;
 }
 async function changeMemberTeam(memberId,teamId){
-  const m=currentMeeting();if(!m||!teamId)return;
+  const m=currentMeeting();if(!m)return;
   const active=matchSeries.find(s=>s.meeting_id===m.id&&s.status==='active')||threeTeamSeries.find(s=>s.meeting_id===m.id&&s.status==='active');
-  if(active)return toast('진행 중인 시리즈에서는 팀을 변경할 수 없습니다.');
-  const {error}=await sb.rpc('admin_assign_member_team_v51',{p_meeting_id:m.id,p_member_id:memberId,p_team_id:teamId});
+  if(active)return toast('진행 중인 시리즈에서는 팀 또는 대기 상태를 변경할 수 없습니다.');
+  const {error}=await sb.rpc('admin_assign_member_team_v51',{p_meeting_id:m.id,p_member_id:memberId,p_team_id:teamId||null});
   if(error)return toast(error.message);
-  toast('팀 배정을 변경했습니다.');await loadAll();
+  toast(teamId?'팀 배정을 변경했습니다.':'대기 상태로 변경했습니다.');await loadAll();
 }
 function renderTeams(){
   const m=currentMeeting();if(!m)return;
   const ts=teams.filter(t=>t.meeting_id===m.id).sort((a,b)=>a.team_no-b.team_no);
   const active=matchSeries.find(s=>s.meeting_id===m.id&&s.status==='active')||threeTeamSeries.find(s=>s.meeting_id===m.id&&s.status==='active');
-  const attending=attendingPeople(m),used=teamMembers.filter(tm=>ts.some(t=>t.id===tm.team_id)).map(tm=>tm.member_id),unassigned=attending.filter(x=>!used.includes(x.id));
-  $('teamArea').innerHTML=ts.length?`<div class="team-summary">${ts.map(t=>`<span class="badge">${t.team_name} ${teamMembers.filter(tm=>tm.team_id===t.id).length}명</span>`).join('')}</div><div class="team-grid">${ts.map(t=>`<div class="team-card"><h3>${t.team_name} <small>${teamMembers.filter(tm=>tm.team_id===t.id).length}명</small></h3>${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>members.find(x=>x.id===tm.member_id)).filter(Boolean).map(x=>teamMemberRow(x,t.id,ts,!!active)).join('')||'<div class="empty compact">배정된 회원 없음</div>'}</div>`).join('')}</div>${unassigned.length?`<div class="notice warning" style="margin-top:12px"><b>미배정 ${unassigned.length}명:</b> ${unassigned.map(x=>x.name).join(', ')} · 자동편성을 다시 실행하세요.</div>`:'<div class="notice success" style="margin-top:12px"><b>대기인원 0명</b> · 참석자 전원이 팀에 배정되었습니다.</div>'}`:'<div class="empty">팀을 생성해 주세요.</div>';
+  const attending=attendingPeople(m);
+  const used=teamMembers.filter(tm=>ts.some(t=>t.id===tm.team_id)).map(tm=>tm.member_id);
+  const waiting=attending.filter(x=>!used.includes(x.id));
+  if(!ts.length){$('teamArea').innerHTML='<div class="empty">팀을 생성해 주세요.</div>';return;}
+  const cards=ts.map(t=>`<div class="team-card"><h3>${t.team_name} <small>${teamMembers.filter(tm=>tm.team_id===t.id).length}명</small></h3>${teamMembers.filter(tm=>tm.team_id===t.id).map(tm=>members.find(x=>x.id===tm.member_id)).filter(Boolean).map(x=>teamMemberRow(x,t.id,ts,!!active)).join('')||'<div class="empty compact">배정된 회원 없음</div>'}</div>`).join('');
+  const waitingCard=`<div class="team-card waiting-card"><h3>대기 <small>${waiting.length}명</small></h3>${waiting.map(x=>teamMemberRow(x,null,ts,!!active)).join('')||'<div class="empty compact">대기 인원 없음</div>'}</div>`;
+  $('teamArea').innerHTML=`<div class="team-summary">${ts.map(t=>`<span class="badge">${t.team_name} ${teamMembers.filter(tm=>tm.team_id===t.id).length}명</span>`).join('')}<span class="badge waiting-badge">대기 ${waiting.length}명</span></div><div class="team-grid">${cards}${waitingCard}</div><div class="notice ${waiting.length?'warning':'success'}" style="margin-top:12px">${waiting.length?`<b>대기 ${waiting.length}명:</b> ${waiting.map(x=>x.name).join(', ')} · 게임비와 경기횟수 제외`:'<b>대기 인원 없음</b> · 필요하면 배정 선택에서 대기로 변경하세요.'}</div>`;
 }
 function gameTeamsForMeeting(meetingId){
   return teams.filter(t=>t.meeting_id===meetingId).sort((a,b)=>a.team_no-b.team_no);
@@ -495,6 +501,8 @@ function renderMatchday(){
   if(!m){$('matchdaySummary').innerHTML='<div class="empty">모임 없음</div>';return}
   const people=attendingPeople(m);
   const ts=teams.filter(t=>t.meeting_id===m.id).sort((a,b)=>a.team_no-b.team_no);
+  const assignedIds=teamMembers.filter(tm=>ts.some(t=>t.id===tm.team_id)).map(tm=>tm.member_id);
+  const waitingPeople=people.filter(x=>!assignedIds.includes(x.id));
   const allSeries=seriesForMeeting(m);
   const active=activeSeries(m);
   const activeThree=activeThreeSeries(m);
@@ -534,9 +542,9 @@ function renderMatchday(){
       <div class="field"><label>A팀</label><select id="seriesTeamA">${ts.map(t=>`<option value="${t.id}">${t.team_name}</option>`).join('')}</select></div>
       <div class="field"><label>B팀</label><select id="seriesTeamB">${ts.map((t,i)=>`<option value="${t.id}" ${i===1?'selected':''}>${t.team_name}</option>`).join('')}</select></div>
       <div class="field"><label>경기 방식</label><select id="seriesBestOf"><option value="3">3판 2승제</option><option value="5">5판 3승제</option></select></div>
-      ${refereeRequired?`<div class="field"><label>심판 *</label><select id="seriesReferee"><option value="">심판 선택</option>${people.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select></div>`:''}
+      ${refereeRequired?`<div class="field"><label>심판 *</label><select id="seriesReferee"><option value="">대기 인원에서 선택</option>${waitingPeople.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select></div>`:''}
     </div>
-    ${refereeRequired?'<div class="notice" style="margin-top:10px">참석 인원이 9~11명일 때에는 참석자 중 한 명을 심판으로 지정합니다. 심판은 게임비와 경기횟수에서 제외됩니다.</div>':''}
+    ${refereeRequired?'<div class="notice" style="margin-top:10px">참석 인원이 9~11명일 때에는 최소 1명을 대기로 두고, 대기 인원 중에서 심판을 지정합니다. 대기자와 심판은 게임비와 경기횟수에서 제외됩니다.</div>':''}
     <button class="btn dark" style="width:100%;margin-top:12px" onclick="startSeries()">시리즈 시작</button>`;
   }else{
     $('seriesStartArea').innerHTML='<div class="empty">2개 이상의 팀을 먼저 편성하세요.</div>';
@@ -633,7 +641,14 @@ async function startSeries(){
   const refereeId=refereeEligible?($('seriesReferee')?.value||null):null;
 
   if(!teamA||!teamB||teamA===teamB)return toast('서로 다른 두 팀을 선택하세요.');
-  if(people.length>=9&&people.length<=11&&!refereeId)return toast('참석 인원이 9~11명일 때에는 심판을 선택하세요.');
+  if(people.length>=9&&people.length<=11){
+    const ts=gameTeamsForMeeting(m.id);
+    const assignedIds=teamMembers.filter(tm=>ts.some(t=>t.id===tm.team_id)).map(tm=>tm.member_id);
+    const waitingPeople=people.filter(x=>!assignedIds.includes(x.id));
+    if(!waitingPeople.length)return toast('참석 인원 중 최소 1명을 대기 상태로 변경하세요.');
+    if(!refereeId)return toast('대기 인원 중에서 심판을 선택하세요.');
+    if(!waitingPeople.some(x=>x.id===refereeId))return toast('심판은 대기 인원 중에서만 선택할 수 있습니다.');
+  }
 
   const {data,error}=await sb.rpc('admin_start_match_series_v57',{
     p_meeting_id:m.id,

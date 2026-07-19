@@ -1,5 +1,5 @@
-const CACHE_NAME='allin-v5.8';
-const APP_SHELL=['./','./index.html','./admin.html','./operation.html','./styles.css?v=5.8','./member.js?v=5.8','./admin.js?v=5.8','./operation.js?v=5.8','./pwa-member.js?v=5.8','./pwa-admin.js?v=5.8','./pwa-enhanced.js?v=5.8','./manifest-member.webmanifest?v=580','./manifest-admin.webmanifest?v=580','./icon-member-192.png?v=580','./icon-member-512.png?v=580','./icon-admin-192.png?v=580','./icon-admin-512.png?v=580'];
+const CACHE_NAME='allin-v5.8.1';
+const APP_SHELL=['./','./index.html','./admin.html','./operation.html','./styles.css?v=5.8.1','./member.js?v=5.8.1','./admin.js?v=5.8.1','./operation.js?v=5.8.1','./pwa-member.js?v=5.8.1','./pwa-admin.js?v=5.8.1','./pwa-enhanced.js?v=5.8.1','./manifest-member.webmanifest?v=581','./manifest-admin.webmanifest?v=581','./icon-member-192.png?v=581','./icon-member-512.png?v=581','./icon-admin-192.png?v=581','./icon-admin-512.png?v=581'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));});
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting();});

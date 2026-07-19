@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#111827" name="theme-color"/><title>올인 족구단 총무</title><link href="styles.css?v=5.7.7" rel="stylesheet"/>
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#111827" name="theme-color"/><title>올인 족구단 총무</title><link href="styles.css?v=5.8" rel="stylesheet"/>
 <meta content="#080b10" name="theme-color"/>
 <meta content="yes" name="apple-mobile-web-app-capable"/>
 <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
 <meta content="ALLIN 총무" name="apple-mobile-web-app-title"/>
 </head>
-<body class="operation-page">
+<body class="operation-page" data-app-kind="member">
 <div class="shell" id="appView">
 <header class="top"><div class="brand"><div class="brand-title-wrap"><img alt="ALLIN 로고" class="brand-mark" src="allin-logo.png"/><div><h1>올인 족구단 · 경기 운영</h1><small id="operationOperator">회원 대리 운영</small></div></div><div class="top-actions"><button class="btn small" onclick="returnToMember()">회원 화면</button></div></div></header>
 <main>
@@ -87,7 +87,7 @@
 <button class="btn red" onclick="executeReset()" style="width:100%;margin-top:14px">정말 초기화</button>
 </div></div>
 <div class="toast" id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.7.7"></script><script src="common.js?v=5.7.7"></script><script src="operation.js?v=5.7.7"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.8"></script><script src="common.js?v=5.8"></script><script src="operation.js?v=5.8"></script>
 
 <nav class="bottom operation-only-nav">
 <div class="bottom-inner operation-bottom">
@@ -96,4 +96,5 @@
 <button class="nav" onclick="returnToMember()" type="button"><b>↩</b>회원으로</button>
 </div>
 </nav>
+<script src="pwa-enhanced.js?v=5.8"></script>
 </body></html>

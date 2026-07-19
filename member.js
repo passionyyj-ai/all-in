@@ -48,11 +48,6 @@ async function loadPortal(silent=false){
   $('meetingDate').textContent=meeting?.date||'예정된 모임 없음';
   $('meetingMeta').textContent=meeting?`참석 ${data.attending_count||0}명 · 불참 ${data.absent_count||0}명 · 미응답 ${data.pending_count||0}명`:'총무가 모임을 생성하면 표시됩니다.';
   renderAttendance(data||{});
-  const referee=$('currentReferee');
-  if(referee){
-    referee.classList.toggle('hidden',!data?.referee_name);
-    referee.innerHTML=data?.referee_name?`<b>오늘의 심판</b><span>${data.referee_name}</span>`:'';
-  }
   renderMyStatus();
 }
 function renderAttendance(data){

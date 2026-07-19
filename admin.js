@@ -501,8 +501,6 @@ function renderMatchday(){
   if(!m){$('matchdaySummary').innerHTML='<div class="empty">모임 없음</div>';return}
   const people=attendingPeople(m);
   const ts=teams.filter(t=>t.meeting_id===m.id).sort((a,b)=>a.team_no-b.team_no);
-  const assignedIds=teamMembers.filter(tm=>ts.some(t=>t.id===tm.team_id)).map(tm=>tm.member_id);
-  const waitingPeople=people.filter(x=>!assignedIds.includes(x.id));
   const allSeries=seriesForMeeting(m);
   const active=activeSeries(m);
   const activeThree=activeThreeSeries(m);
@@ -537,14 +535,11 @@ function renderMatchday(){
         ?'<button class="btn dark" style="width:100%;margin-top:12px" onclick="startThreeTeamSeries()">3팀 단판 시리즈 시작</button>'
         :'<div class="notice warning" style="margin-top:12px"><b>3팀 기능 준비 필요</b><br>Supabase에서 ALLIN_V55_Three_Team_Series_Update.sql을 실행하세요. 기존 회원·회비·모임 기능은 정상 사용 가능합니다.</div>'}`;
   }else if(ts.length>=2){
-    const refereeRequired=people.length>=9&&people.length<=11;
     $('seriesStartArea').innerHTML=`<div class="form-grid">
       <div class="field"><label>A팀</label><select id="seriesTeamA">${ts.map(t=>`<option value="${t.id}">${t.team_name}</option>`).join('')}</select></div>
       <div class="field"><label>B팀</label><select id="seriesTeamB">${ts.map((t,i)=>`<option value="${t.id}" ${i===1?'selected':''}>${t.team_name}</option>`).join('')}</select></div>
       <div class="field"><label>경기 방식</label><select id="seriesBestOf"><option value="3">3판 2승제</option><option value="5">5판 3승제</option></select></div>
-      ${refereeRequired?`<div class="field"><label>심판 *</label><select id="seriesReferee"><option value="">대기 인원에서 선택</option>${waitingPeople.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select></div>`:''}
     </div>
-    ${refereeRequired?'<div class="notice" style="margin-top:10px">참석 인원이 9~11명일 때에는 최소 1명을 대기로 두고, 대기 인원 중에서 심판을 지정합니다. 대기자와 심판은 게임비와 경기횟수에서 제외됩니다.</div>':''}
     <button class="btn dark" style="width:100%;margin-top:12px" onclick="startSeries()">시리즈 시작</button>`;
   }else{
     $('seriesStartArea').innerHTML='<div class="empty">2개 이상의 팀을 먼저 편성하세요.</div>';
@@ -571,7 +566,7 @@ function renderThreeTeamArea(m,s){
   const pending=rows.find(g=>g.score_a===null||g.score_b===null);
   const fee=s.reset_count>0?4000:2000;
   const phaseLabel=s.phase==='loser_final'?'최종 패자 결정전':'우승팀 결정';
-  $('seriesArea').innerHTML=`${active.referee_name?`<div class="referee-banner"><b>심판</b><span>${active.referee_name}</span><small>게임비·경기횟수 제외</small></div>`:''}<div class="grid g4">
+  $('seriesArea').innerHTML=`<div class="grid g4">
     <div class="kpi"><div class="label">진행 회차</div><div class="value">${s.cycle_no}회차</div></div>
     <div class="kpi"><div class="label">초기화</div><div class="value">${s.reset_count}회</div></div>
     <div class="kpi"><div class="label">현재 단계</div><div class="value" style="font-size:18px">${phaseLabel}</div></div>
@@ -633,34 +628,21 @@ async function startSeries(){
   const m=matchMeeting();
   if(!m)return toast('운영할 모임을 선택하세요.');
 
-  const people=attendingPeople(m);
   const teamA=$('seriesTeamA')?.value;
   const teamB=$('seriesTeamB')?.value;
   const bestOf=Number($('seriesBestOf')?.value||3);
-  const refereeEligible=people.length>=9&&people.length<=11;
-  const refereeId=refereeEligible?($('seriesReferee')?.value||null):null;
 
   if(!teamA||!teamB||teamA===teamB)return toast('서로 다른 두 팀을 선택하세요.');
-  if(people.length>=9&&people.length<=11){
-    const ts=gameTeamsForMeeting(m.id);
-    const assignedIds=teamMembers.filter(tm=>ts.some(t=>t.id===tm.team_id)).map(tm=>tm.member_id);
-    const waitingPeople=people.filter(x=>!assignedIds.includes(x.id));
-    if(!waitingPeople.length)return toast('참석 인원 중 최소 1명을 대기 상태로 변경하세요.');
-    if(!refereeId)return toast('대기 인원 중에서 심판을 선택하세요.');
-    if(!waitingPeople.some(x=>x.id===refereeId))return toast('심판은 대기 인원 중에서만 선택할 수 있습니다.');
-  }
 
-  const {data,error}=await sb.rpc('admin_start_match_series_v57',{
+  const {data,error}=await sb.rpc('admin_start_match_series_v59',{
     p_meeting_id:m.id,
     p_team_a_id:teamA,
     p_team_b_id:teamB,
-    p_best_of:bestOf,
-    p_referee_member_id:refereeId
+    p_best_of:bestOf
   });
 
   if(error)return toast(error.message);
-  const referee=members.find(x=>x.id===refereeId);
-  toast(`${bestOf===3?'3판 2승제':'5판 3승제'} 시리즈 시작${referee?` · 심판 ${referee.name}`:''}`);
+  toast(`${bestOf===3?'3판 2승제':'5판 3승제'} 시리즈를 시작했습니다.`);
   await loadAll();
 }
 function renderSeriesArea(m,active){

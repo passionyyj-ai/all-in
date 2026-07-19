@@ -238,33 +238,6 @@ body{
 .operation-page main{padding-bottom:96px}
 .operation-page .operation-bottom{grid-template-columns:repeat(3,1fr)!important;max-width:620px}
 
-.referee-card{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  margin-top:14px;
-  padding:14px 16px;
-  border:1px solid #fbbf24;
-  border-radius:14px;
-  background:#fffbeb;
-  color:#92400e;
-}
-.referee-card b{font-size:14px}
-.referee-card span{font-size:18px;font-weight:900}
-.referee-banner{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-bottom:12px;
-  padding:12px 14px;
-  border-radius:12px;
-  background:#fffbeb;
-  border:1px solid #fbbf24;
-  color:#92400e;
-}
-.referee-banner span{font-size:18px;font-weight:900}
-.referee-banner small{margin-left:auto;color:#a16207}
 
 .attendance-modal-card{max-width:760px}
 .attendance-edit-list{

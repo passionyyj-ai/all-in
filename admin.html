@@ -1,8 +1,8 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.9">
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.9.1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<link rel="manifest" href="/all-in/manifest-admin.webmanifest?v=5.9">
+<link rel="manifest" href="/all-in/manifest-admin.webmanifest?v=5.9.1">
 <link rel="apple-touch-icon" href="/all-in/icon-admin-192.png?v=572">
 <meta name="apple-mobile-web-app-title" content="ALLIN 총무">
 <meta name="application-name" content="ALLIN 총무">
@@ -40,7 +40,7 @@
 </div>
 </section>
 
-<section id="members" class="view"><div class="title"><h2>회원 명단</h2><button class="btn dark small" onclick="openMember()">+ 회원 추가</button></div><div class="card"><div class="toolbar"><input id="memberSearchAdmin" placeholder="회원 검색" oninput="renderMembers()"><select id="posFilter" onchange="renderMembers()"><option value="">전체 포지션</option><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div><div class="table-wrap"><table><thead><tr><th>이름</th><th>출생연도</th><th>연락처</th><th>주 포지션</th><th>보조 포지션</th><th>PIN</th><th>관리</th></tr></thead><tbody id="memberBody"></tbody></table></div></div></section>
+<section id="members" class="view"><div class="title"><h2>회원 명단</h2><button class="btn dark small" onclick="openMember()">+ 회원 추가</button></div><div class="card"><div class="toolbar"><input id="memberSearchAdmin" placeholder="회원 검색" oninput="renderMembers()"><select id="posFilter" onchange="renderMembers()" aria-label="주 포지션 필터"><option value="">전체 주 포지션</option><option value="공격">주 포지션 · 공격</option><option value="토스">주 포지션 · 토스</option><option value="좌수비">주 포지션 · 좌수비</option><option value="우수비">주 포지션 · 우수비</option></select></div><div class="table-wrap"><table><thead><tr><th>이름</th><th>출생연도</th><th>연락처</th><th>주 포지션</th><th>보조 포지션</th><th>PIN</th><th>관리</th></tr></thead><tbody id="memberBody"></tbody></table></div></div></section>
 
 <section id="finance" class="view"><div class="title"><h2>회비 · 비용</h2><button class="btn dark small" onclick="openTx()">+ 입출금 등록</button></div><div id="financeKpis" class="grid g4"></div><div class="title"><h2>회원별 월 회비</h2></div><div class="card"><div class="toolbar"><input type="month" id="feeMonth" onchange="renderFees()"><div class="row"><input type="number" id="feeAmount" min="0" step="1000" style="width:125px"><button class="btn small" onclick="saveFeeAmount()">회비 저장</button></div></div><div class="table-wrap"><table><thead><tr><th>회원</th><th>포지션</th><th>회비</th><th>상태</th><th>납부일</th><th>관리</th></tr></thead><tbody id="feeBody"></tbody></table></div></div><div class="title"><h2>일자별 입출금</h2></div><div class="card"><div class="toolbar"><input type="month" id="txMonth" onchange="renderTx()"><select id="txTypeFilter" onchange="renderTx()"><option value="">전체</option><option value="income">수입</option><option value="expense">지출</option></select></div><div class="table-wrap"><table><thead><tr><th>일자</th><th>구분</th><th>항목</th><th>회원/대상</th><th>금액</th><th>비고</th><th>관리</th></tr></thead><tbody id="txBody"></tbody></table></div></div></section>
 
@@ -214,7 +214,7 @@
 </div></div>
 
 <div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9"></script><script src="common.js?v=5.9"></script><script src="admin.js?v=5.9"></script><script src="pwa-admin.js?v=5.9"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.1"></script><script src="common.js?v=5.9.1"></script><script src="admin.js?v=5.9.1"></script><script src="pwa-admin.js?v=5.9.1"></script>
 
 <script id="admin-keyboard-hardfix">
 document.addEventListener('DOMContentLoaded',()=>{
@@ -233,5 +233,5 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
-<script src="pwa-enhanced.js?v=5.9"></script>
+<script src="pwa-enhanced.js?v=5.9.1"></script>
 </body></html>

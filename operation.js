@@ -130,7 +130,10 @@ async function saveMember(){
 }
 async function deleteMember(id){if(!confirm('회원을 삭제할까요?'))return;const {error}=await sb.from('members').delete().eq('id',id);if(error)return toast(error.message);await loadAll()}
 function renderMembers(){
-  const q=$('memberSearchAdmin')?.value.trim()||'',p=$('posFilter')?.value||'';const rows=members.filter(m=>(!q||(m.name+(m.phone||'')).includes(q))&&(!p||(m.position===p||(m.secondary_positions||[]).includes(p))));
+  const q=$('memberSearchAdmin')?.value.trim()||'',p=$('posFilter')?.value||'';
+  const rows=members
+    .filter(m=>(!q||(m.name+(m.phone||'')).includes(q))&&(!p||m.position===p))
+    .sort((a,b)=>(POSITIONS.indexOf(a.position)-POSITIONS.indexOf(b.position))||a.name.localeCompare(b.name,'ko'));
   $('memberBody').innerHTML=rows.map(m=>`<tr><td><b>${m.name}</b></td><td>${m.birth_year||'-'}</td><td>${m.phone||'-'}</td><td>${badge(m.position)}</td><td>${secondaryPositionBadges(m)}</td><td>••••</td><td><button class="btn small" onclick="openMember('${m.id}')">수정</button> <button class="btn red small" onclick="deleteMember('${m.id}')">삭제</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">회원 없음</td></tr>';
 }
 function renderFinance(){

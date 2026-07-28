@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>거래관리 - 대경 Tracking</title><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><link rel="stylesheet" href="css/style.css">
+<style>
+.transaction-stack{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.transaction-stack > .card{
+  width:100%;
+}
+.transaction-stack .table-wrap{
+  height:420px;
+}
+</style>
+
+</head><body><div class="app"><aside class="side"><div class="brand">대경 Tracking</div><div class="sub">의료기기 재고 · 선납 · 사용 · 회수 관리</div><nav class="nav">
+<a class="page-link" href="index.html">📊 Dashboard</a>
+<a class="page-link" href="transaction.html">🧾 거래관리</a>
+<a class="page-link" href="inventory.html">📦 재고관리</a>
+<a class="page-link" href="master.html">📁 품목 Master</a>
+<a class="page-link" href="hospital.html">🏥 병원 Master</a>
+<a class="page-link" href="hospital_price.html">🏷️ 병원별 판매단가</a>
+<a class="page-link" href="price.html">💰 단가관리</a>
+<a class="page-link" href="report.html">📈 보고서</a>
+<a class="page-link" href="audit.html">🔍 재고 감사</a>
+<a class="page-link" href="settings.html">⚙️ 환경설정</a>
+</nav></aside><main class="main"><div class="top"><div><div class="title">거래관리</div><div class="hint">입고, 선납, 사용, 회수, 조정 거래를 등록하고 재고 흐름을 관리합니다.</div></div><div class="actions"><button class="btn" onclick="exportBackup()">JSON 백업</button><button class="btn" onclick="document.getElementById('restoreFile').click()">JSON 복원</button><input id="restoreFile" type="file" accept=".json" class="hidden" onchange="restoreBackup(event)"><button class="btn danger" onclick="resetAll()">초기화</button><span id="autosaveStatus" class="autosave-status">자동저장 준비</span></div></div><section><div class="card compact"><h3>거래 직접 입력</h3><p class="hint">선납은 병원 재고 증가 및 사무실 재고 감소로 반영됩니다. 회수는 병원 재고 감소 및 사무실 재고 증가로 반영됩니다.</p><div class="row"><div><label>날짜</label><input id="mDate" type="date"></div><div><label>위치/병원</label><select id="mLoc"></select></div><div><label>구분</label><select id="mType"><option>입고</option><option>선납</option><option>사용</option><option>회수</option><option>조정(+)</option><option>조정(-)</option></select></div><div><label>ID/품목명</label><div class="inline-field"><select id="mProd"></select><button type="button" class="btn small-btn" onclick="openProductSearchPopup('mProd')">검색</button></div></div><div><label>수량</label><input id="mQty" type="number" min="1" value="1"></div><div><label>&nbsp;</label><button class="btn primary" onclick="addManualTx()">등록</button></div></div><div class="mt"><label>비고</label><input id="mMemo"></div></div><div class="card compact"><h3>엑셀 업로드</h3><div class="toolbar"><a class="btn primary" href="./sample/Transaction_upload.xlsx" download="Transaction_upload.xlsx">거래업로드 샘플</a><input type="file" id="txFile" accept=".xlsx,.xls" onchange="handleTxUpload(event)"></div><div id="txUploadResult" class="mt"></div></div><div class="transaction-stack"><div class="card"><h3>최근 거래</h3><div class="table-wrap"><table><thead><tr><th>일자</th><th>위치</th><th>구분</th><th>ID</th><th>품목명</th><th>수량</th><th>판매단가</th><th>매출금액</th><th>재고반영</th><th>비고</th></tr></thead><tbody id="txTable"></tbody></table></div></div><div class="card"><h3>과사용 관리</h3><div class="row-4"><div><label>날짜</label><input id="oDate" type="date"></div><div><label>위치/병원</label><select id="oLoc"></select></div><div><label>ID/품목명</label><div class="inline-field"><select id="oProd"></select><button type="button" class="btn small-btn" onclick="openProductSearchPopup('oProd')">검색</button></div></div><div><label>수량</label><input id="oQty" type="number" min="1" value="1"></div></div><div class="row-4 mt"><div style="grid-column:span 3"><label>사유</label><input id="oMemo"></div><div><label>&nbsp;</label><button class="btn primary" onclick="addOveruse()">임시 반영</button></div></div><div class="table-wrap mt"><table><thead><tr><th>상태</th><th>날짜</th><th>위치</th><th>ID</th><th>품목명</th><th>수량</th><th>사유</th><th>처리</th></tr></thead><tbody id="overuseTable"></tbody></table></div></div></div></section><div id="productSearchModal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><div class="modal-title">품목명 검색</div></div><button type="button" class="btn" onclick="closeProductSearchPopup()">닫기</button></div><div class="modal-body"><div class="row-3"><div><label>제품 카테고리</label><select id="psCat" onchange="renderProductSearchResults()"></select></div><div><label>품목명 검색</label><input id="psKeyword" oninput="renderProductSearchResults()"></div><div><label>&nbsp;</label><button type="button" class="btn primary" onclick="renderProductSearchResults()">조회</button></div></div><div class="table-wrap mt"><table><thead><tr><th>선택</th><th>ID</th><th>제품 카테고리</th><th>품목명</th><th>전체 현재고</th></tr></thead><tbody id="psResults"></tbody></table></div></div></div></div></main></div><script src="js/vendor-core.js?v=1214"></script><script src="js/config.js?v=1214"></script><script src="js/cloud.js?v=1217"></script><script src="js/common.js?v=1217"></script>
+<script src="js/upload.js"></script></body></html>

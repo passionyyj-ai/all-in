@@ -1,13 +1,48 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dashboard - 대경 Tracking</title><link rel="stylesheet" href="css/style.css?v=1222"></head><body class="dashboard-page"><div class="app"><aside class="side"><div class="brand">대경 Tracking</div><div class="sub">의료기기 재고 · 선납 · 사용 · 회수 관리</div><nav class="nav">
-<a class="page-link" href="index.html">📊 Dashboard</a>
-<a class="page-link" href="transaction.html">🧾 거래관리</a>
-<a class="page-link" href="inventory.html">📦 재고관리</a>
-<a class="page-link" href="master.html">📁 품목 Master</a>
-<a class="page-link" href="hospital.html">🏥 병원 Master</a>
-<a class="page-link" href="hospital_price.html">🏷️ 병원별 판매단가</a>
-<a class="page-link" href="price.html">💰 단가관리</a>
-<a class="page-link" href="report.html">📈 보고서</a>
-<a class="page-link" href="audit.html">🔍 재고 감사</a>
-<a class="page-link" href="settings.html">⚙️ 환경설정</a>
-</nav></aside><main class="main"><div class="top"><div><div class="title">Dashboard</div><div class="hint">전체 재고, 병원 재고, 선납/사용/회수 현황을 확인합니다.</div></div><div class="actions"><button class="btn" onclick="exportBackup()">JSON 백업</button><button class="btn" onclick="document.getElementById('restoreFile').click()">JSON 복원</button><input id="restoreFile" type="file" accept=".json" class="hidden" onchange="restoreBackup(event)"><button class="btn danger" onclick="resetAll()">초기화</button><span id="autosaveStatus" class="autosave-status">자동저장 준비</span></div></div><section class="dashboard-content"><div class="grid dashboard-kpi-grid dashboard-qty-grid"><div class="card kpi kpi-card"><div class="label">전체 기준재고</div><div class="value" id="kpiStock">0</div></div><div class="card kpi kpi-card"><div class="label">전체 현재고</div><div class="value" id="kpiCurrent">0</div></div><div class="card kpi kpi-card"><div class="label">누적 사용</div><div class="value" id="kpiUse">0</div></div><div class="card kpi kpi-card"><div class="label">미정리 과사용</div><div class="value" id="kpiOveruse">0</div></div></div><div class="grid mt dashboard-kpi-grid dashboard-value-grid"><div class="card kpi kpi-card"><div class="label">총 재고금액</div><div class="value" id="kpiInventoryValue">0원</div></div><div class="card kpi kpi-card"><div class="label">사무실 재고금액</div><div class="value" id="kpiOfficeValue">0원</div></div><div class="card kpi kpi-card"><div class="label">병원 재고금액</div><div class="value" id="kpiHospitalValue">0원</div></div><div class="card kpi kpi-card"><div class="label">매입단가 미등록 재고 품목</div><div class="value" id="kpiUnpricedItems">0</div></div></div><div class="grid mt dashboard-kpi-grid dashboard-flow-grid"><div class="card kpi kpi-card"><div class="label">사무실 현재고</div><div class="value" id="kpiOffice">0</div></div><div class="card kpi kpi-card"><div class="label">병원 현재고</div><div class="value" id="kpiHospital">0</div></div><div class="card kpi kpi-card"><div class="label">누적 선납</div><div class="value" id="kpiPrepaid">0</div></div><div class="card kpi kpi-card"><div class="label">누적 회수</div><div class="value" id="kpiRecovery">0</div></div></div><div class="grid-2 mt dashboard-panels"><div class="card"><h3>위치별 재고 현황</h3><div class="table-wrap auto"><table><thead><tr><th>위치</th><th>기준재고</th><th>현재고</th><th>재고금액</th><th>입고</th><th>사용</th><th>선납</th><th>회수</th></tr></thead><tbody id="locationSummary"></tbody></table></div></div><div class="card"><h3>최근 거래</h3><div class="table-wrap auto"><table><thead><tr><th>일자</th><th>위치</th><th>구분</th><th>품목명</th><th>수량</th><th>비고</th></tr></thead><tbody id="recentTx"></tbody></table></div></div></div></section></main></div><script src="js/vendor-core.js?v=1214"></script><script src="js/config.js?v=1214"></script><script src="js/cloud.js?v=1217"></script><script src="js/common.js?v=1217"></script>
-<script src="js/dashboard.js?v=1220"></script></body></html>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 회원</title><link rel="stylesheet" href="styles.css?v=5.9.1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<link rel="manifest" href="/all-in/manifest-member.webmanifest?v=5.9.1">
+<link rel="apple-touch-icon" href="/all-in/icon-member-192.png?v=590">
+<meta name="apple-mobile-web-app-title" content="ALLIN 회원">
+<meta name="application-name" content="ALLIN 회원">
+<meta name="theme-color" content="#e91e63">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+</head>
+<body data-app-kind="member">
+<div id="memberLoginView" class="login-wrap"><div class="login-card">
+<div class="hero"><img class="club-logo" src="allin-logo.png" alt="ALLIN JOKGUCLUB 로고"><h1>올인 족구단</h1><div class="club-subtitle">ALLIN JOKGUCLUB · 2023</div><p>회원 로그인</p></div>
+<div class="stack"><input id="memberLoginId" autocomplete="username" placeholder="회원 이름"><input id="memberLoginPw" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="개인 4자리 PIN"><button class="btn dark" onclick="memberLogin()">로그인</button></div>
+<div id="memberLoginError" style="color:#dc2626;font-size:13px;text-align:center;margin-top:10px"></div>
+</div></div>
+<div id="memberAppView" class="member-wrap hidden"><div class="member-card">
+<div class="hero"><img class="club-logo" src="allin-logo.png" alt="ALLIN JOKGUCLUB 로고"><h1>올인 족구단</h1><div class="club-subtitle">ALLIN JOKGUCLUB · 2023</div><p>일요일 모임 참석 여부를 직접 체크하세요.</p></div>
+<div id="configWarn" class="notice hidden">Supabase 연결 전입니다. <b>config.js</b> 설정을 먼저 완료하세요.</div>
+<div id="meetingBox" class="meeting-box"><small>다가오는 모임</small><div class="date" id="meetingDate">불러오는 중...</div><div id="meetingMeta" style="margin-top:6px;color:#cbd5e1;font-size:13px"></div></div>
+<div id="attendanceSummary" class="attendance-summary"></div>
+<div id="attendancePeople" class="attendance-people"></div>
+<div id="checkPanel" class="hidden" style="margin-top:14px">
+  <div id="currentStatus"></div>
+  <div class="row" style="margin-top:10px"><button class="btn green" style="flex:1" onclick="setAttendance(true)">참석</button><button class="btn red" style="flex:1" onclick="setAttendance(false)">불참</button></div>
+</div>
+<div class="member-session-bar" style="margin-top:14px">
+  <div><b id="loginMemberName"></b>님의 참석 여부만 변경할 수 있습니다.</div>
+  <button type="button" class="member-logout-btn" onclick="memberLogout()">로그아웃</button>
+</div>
+<div class="title" style="margin-top:20px"><h2>나의 회비 입금 현황</h2><input id="memberDashMonth" type="month" onchange="loadMemberDashboard()"></div>
+<div class="card dashboard-readonly"><div id="feeDashboard"></div></div>
+<div class="title"><h2>수입 · 지출 현황</h2></div>
+<div class="card dashboard-readonly"><div id="cashDashboard"></div></div>
+<div class="title"><h2>나의 게임비 납부 현황</h2></div>
+<div class="card dashboard-readonly"><div id="gameDueDashboard"></div></div>
+
+<div class="delegate-admin-card" style="margin-top:18px">
+  <div><b>대리 운영이 필요한가요?</b><br><span>총무 부재 시 참석 관리와 경기 운영을 대신할 수 있습니다.</span></div>
+  <button type="button" class="btn dark" onclick="openDelegateAdmin()">경기 운영</button>
+</div>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.1"></script><script src="common.js?v=5.9.1"></script><script src="member.js?v=5.9.1"></script><script src="pwa-member.js?v=5.9.1"></script>
+<script src="pwa-enhanced.js?v=5.9.1"></script>
+</body></html>

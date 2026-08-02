@@ -746,6 +746,8 @@ function renderReceivables(){
     };
     meetingGroups[key].rows.push(d);
   });
+  const monthAdjustments=gameFeeAdjustments.filter(a=>String(a.adjustment_month).slice(0,7)===month);
+  const latestMeetingDate=Object.values(meetingGroups).map(g=>g.date).sort().at(-1);
 
   const meetingHtml=Object.values(meetingGroups).sort((a,b)=>b.date.localeCompare(a.date)).map(g=>{
     const grouped={};
@@ -756,6 +758,17 @@ function renderReceivables(){
       if(d.status==='paid')grouped[d.member_id].paid+=Number(d.amount);
       else grouped[d.member_id].unpaid+=Number(d.amount);
     });
+    if(g.date===latestMeetingDate){
+      monthAdjustments.forEach(a=>{
+        const m=members.find(x=>x.id===a.member_id);
+        if(!grouped[a.member_id])grouped[a.member_id]={name:m?.name||'-',total:0,paid:0,unpaid:0,adjusted:false};
+        const row=grouped[a.member_id];
+        row.total+=Number(a.charge_delta||0);
+        row.unpaid+=Number(a.balance_delta||0);
+        row.paid=row.total-row.unpaid;
+        row.adjusted=true;
+      });
+    }
     let people=Object.values(grouped);
     if(status==='unpaid')people=people.filter(x=>x.unpaid>0);
     if(status==='paid')people=people.filter(x=>x.paid>0);
@@ -766,7 +779,7 @@ function renderReceivables(){
         <button class="btn blue small" onclick="shareMeetingGameDues('${g.date}')">공유</button>
       </div>
       <div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>회원</th><th>청구</th><th>납부</th><th>게임비 잔액</th></tr></thead><tbody>
-      ${people.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr><td><b>${x.name}</b></td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td><td class="${x.unpaid>0?'money-out':''}"><b>${won(x.unpaid)}</b></td></tr>`).join('')||'<tr><td colspan="4" class="empty">내역 없음</td></tr>'}
+      ${people.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr><td><b>${x.name}</b>${x.adjusted?'<div style="font-size:11px;color:#2563eb">수동 조정 반영</div>':''}</td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td><td class="${x.unpaid>0?'money-out':''}"><b>${won(x.unpaid)}</b></td></tr>`).join('')||'<tr><td colspan="4" class="empty">내역 없음</td></tr>'}
       </tbody></table></div>
     </div>`;
   }).join('');
@@ -849,8 +862,8 @@ function openGameFeeHistory(memberId){
 async function markMemberDuesPaid(memberId,month){
   const rows=gameDues.filter(d=>d.member_id===memberId&&d.status==='unpaid'&&monthKey(d.due_date)===month);
   const member=members.find(x=>x.id===memberId);
-  const amount=rows.reduce((s,d)=>s+Number(d.amount),0);
-  if(!rows.length)return toast('납부할 게임비가 없습니다.');
+  const amount=memberGameFeeTotals(memberId,month).balance;
+  if(amount<=0)return toast('납부할 게임비가 없습니다.');
   if(!confirm(`${member?.name||'회원'}의 게임비 합계 ${won(amount)} 입금을 확인했나요?
 확인 시 수입 내역 1건으로 합산 반영됩니다.`))return;
   const {error}=await sb.rpc('admin_mark_member_game_fee_paid_v591',{p_member_id:memberId,p_month:month+'-01',p_paid_date:today()});

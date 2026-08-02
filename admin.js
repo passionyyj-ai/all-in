@@ -921,7 +921,22 @@ async function executeReset(){
 
 function currentDuesMonth(){return $('duesMonth')?.value||new Date().toISOString().slice(0,7)}
 function unpaidRowsForMonth(){const month=currentDuesMonth();return gameDues.filter(d=>monthKey(d.due_date)===month&&d.status==='unpaid')}
-function buildAllDuesShareText(rows=unpaidRowsForMonth(),title='게임비 안내'){
+function adjustedUnpaidRowsForMonth(){
+  const month=currentDuesMonth(),rows=unpaidRowsForMonth().map(d=>({...d,amount:Number(d.amount)}));
+  const dates=meetings.map(m=>m.meeting_date).filter(d=>monthKey(d)===month).sort();
+  const fallbackDate=dates.at(-1)||month+'-01';
+  const deltas={};
+  gameFeeAdjustments.filter(a=>String(a.adjustment_month).slice(0,7)===month).forEach(a=>{deltas[a.member_id]=(deltas[a.member_id]||0)+Number(a.balance_delta||0)});
+  Object.entries(deltas).forEach(([memberId,delta])=>{
+    if(delta>0)rows.push({member_id:memberId,due_date:fallbackDate,amount:delta,manual_adjustment:true});
+    if(delta<0){
+      let reduction=-delta;
+      rows.filter(r=>r.member_id===memberId).sort((a,b)=>b.due_date.localeCompare(a.due_date)).forEach(r=>{const used=Math.min(r.amount,reduction);r.amount-=used;reduction-=used});
+    }
+  });
+  return rows.filter(r=>r.amount>0);
+}
+function buildAllDuesShareText(rows=adjustedUnpaidRowsForMonth(),title='게임비 안내'){
   const byDate={};
   rows.forEach(d=>{
     const date=d.due_date;
@@ -943,7 +958,8 @@ function buildAllDuesShareText(rows=unpaidRowsForMonth(),title='게임비 안내
     });
 
   const total=rows.reduce((s,d)=>s+Number(d.amount),0);
-  return `⚽ 올인 족구단 ${title}\n\n${sections.join('\n\n')}\n\n총 게임비 : ${won(total)}\n입금 완료 후 총무에게 알려주세요.`;
+  const adjusted=gameFeeAdjustments.some(a=>String(a.adjustment_month).slice(0,7)===currentDuesMonth());
+  return `⚽ 올인 족구단 ${title}\n\n${sections.join('\n\n')}\n\n총 게임비 : ${won(total)}${adjusted?'\n※ 총무 수동 조정 금액 반영':''}\n입금 완료 후 총무에게 알려주세요.`;
 }
 function buildMemberDuesShareText(memberId){
   const month=currentDuesMonth();
@@ -951,8 +967,10 @@ function buildMemberDuesShareText(memberId){
   const rows=gameDues.filter(d=>d.member_id===memberId&&d.status==='unpaid'&&monthKey(d.due_date)===month);
   const byDate={};
   rows.forEach(d=>{byDate[d.due_date]=(byDate[d.due_date]||0)+Number(d.amount)});
-  const total=rows.reduce((s,d)=>s+Number(d.amount),0);
-  return `⚽ 올인 족구단 게임비 안내\n${m?.name||'회원'}님\n\n${Object.entries(byDate).sort().map(([date,amount])=>`📅 ${date} 모임 : ${won(amount)}`).join('\n')}\n\n입금하실 게임비 합계 : ${won(total)}\n입금 완료 후 총무에게 알려주세요.`;
+  const adjustments=gameFeeAdjustments.filter(a=>a.member_id===memberId&&String(a.adjustment_month).slice(0,7)===month);
+  const delta=adjustments.reduce((s,a)=>s+Number(a.balance_delta||0),0);
+  const total=Math.max(0,rows.reduce((s,d)=>s+Number(d.amount),0)+delta);
+  return `⚽ 올인 족구단 게임비 안내\n${m?.name||'회원'}님\n\n${Object.entries(byDate).sort().map(([date,amount])=>`📅 ${date} 모임 : ${won(amount)}`).join('\n')}${adjustments.length?`\n📝 수동 조정 : ${delta>=0?'+':''}${won(delta)}`:''}\n\n입금하실 게임비 합계 : ${won(total)}${adjustments.length?'\n※ 총무 수동 조정 금액 반영':''}\n입금 완료 후 총무에게 알려주세요.`;
 }
 async function shareText(text,title='올인 족구단 게임비'){
   if(navigator.share){
@@ -961,13 +979,13 @@ async function shareText(text,title='올인 족구단 게임비'){
   await navigator.clipboard.writeText(text);
   toast('공유문구를 복사했습니다. 카카오톡 단톡방에 붙여넣으세요.');
 }
-function shareAllGameDues(){const rows=unpaidRowsForMonth();if(!rows.length)return toast('공유할 게임비 내역이 없습니다.');shareText(buildAllDuesShareText(rows))}
+function shareAllGameDues(){const rows=adjustedUnpaidRowsForMonth();if(!rows.length)return toast('공유할 게임비 내역이 없습니다.');shareText(buildAllDuesShareText(rows))}
 async function copyAllGameDues(){
-  const rows=unpaidRowsForMonth();if(!rows.length)return toast('복사할 게임비 내역이 없습니다.');
+  const rows=adjustedUnpaidRowsForMonth();if(!rows.length)return toast('복사할 게임비 내역이 없습니다.');
   await navigator.clipboard.writeText(buildAllDuesShareText(rows));toast('게임비 안내 문구 복사 완료');
 }
 function shareMeetingGameDues(date){
-  const rows=unpaidRowsForMonth().filter(d=>d.due_date===date);
+  const rows=adjustedUnpaidRowsForMonth().filter(d=>d.due_date===date);
   if(!rows.length)return toast('해당 모임일의 게임비 내역이 없습니다.');
   shareText(buildAllDuesShareText(rows,'게임비 안내'));
 }

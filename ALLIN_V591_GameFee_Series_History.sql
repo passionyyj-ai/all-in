@@ -74,7 +74,7 @@ grant execute on function public.admin_adjust_member_game_fee_v591(uuid,date,num
 
 create or replace function public.admin_mark_member_game_fee_paid_v591(p_member_id uuid,p_month date,p_paid_date date)
 returns boolean language plpgsql security definer set search_path=public as $$
-declare v_month date:=date_trunc('month',p_month)::date; v_charge numeric(12,0); v_balance numeric(12,0); v_name text; v_tx uuid;
+declare v_month date:=date_trunc('month',p_month)::date; v_charge numeric(12,0); v_balance numeric(12,0); v_balance_adjustment numeric(12,0); v_name text; v_tx uuid;
 begin
   if not public.is_admin() then raise exception 'admin only'; end if;
   select name into v_name from public.members where id=p_member_id;
@@ -82,13 +82,15 @@ begin
     coalesce((select sum(amount) from public.game_dues where member_id=p_member_id and date_trunc('month',due_date)::date=v_month),0)+coalesce((select sum(charge_delta) from public.member_game_fee_adjustments where member_id=p_member_id and adjustment_month=v_month),0),
     coalesce((select sum(amount) from public.game_dues where member_id=p_member_id and status='unpaid' and date_trunc('month',due_date)::date=v_month),0)+coalesce((select sum(balance_delta) from public.member_game_fee_adjustments where member_id=p_member_id and adjustment_month=v_month),0)
   into v_charge,v_balance;
+  select coalesce(sum(balance_delta),0) into v_balance_adjustment
+  from public.member_game_fee_adjustments where member_id=p_member_id and adjustment_month=v_month;
   if v_balance<=0 then raise exception '미납 게임비가 없습니다.'; end if;
   insert into public.transactions(tx_date,tx_type,category,target,amount,memo,source,ref_id)
   values(p_paid_date,'income','게임비',v_name,v_balance,to_char(v_month,'YYYY-MM')||' 조정 반영 게임비 입금 확인','game_payment',gen_random_uuid()) returning id into v_tx;
   update public.game_dues set status='paid',paid_date=p_paid_date,transaction_id=v_tx
   where member_id=p_member_id and status='unpaid' and date_trunc('month',due_date)::date=v_month;
   insert into public.member_game_fee_adjustments(member_id,adjustment_month,charge_before,charge_after,balance_before,balance_after,charge_delta,balance_delta,reason)
-  values(p_member_id,v_month,v_charge,v_charge,v_balance,0,0,-v_balance,'게임비 합계 입금 확인');
+  values(p_member_id,v_month,v_charge,v_charge,v_balance,0,0,-v_balance_adjustment,'게임비 합계 입금 확인');
   return true;
 end $$;
 grant execute on function public.admin_mark_member_game_fee_paid_v591(uuid,date,date) to authenticated;

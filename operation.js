@@ -1,4 +1,4 @@
-let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], threeTeamSeries=[], threeTeamGames=[], threeTeamFeatureReady=true, settings={monthly_fee:20000};
+let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], seriesTeamSnapshots=[], threeTeamSeries=[], threeTeamGames=[], threeTeamFeatureReady=true, settings={monthly_fee:20000};
 const openModal=id=>$(id).classList.add('show'),closeModal=id=>$(id).classList.remove('show');
 let operationMember=null;
 let operationPin='';
@@ -59,6 +59,9 @@ async function loadAll(){
     toast(error.message||'경기 운영 데이터를 불러오지 못했습니다.');
     return;
   }
+  const {data:snapshotData,error:snapshotError}=await sb.rpc('operation_get_series_team_snapshots_v591',{
+    p_member_id:operationMember.id,p_pin:operationPin
+  });
 
   members=data?.members||[];
   meetings=data?.meetings||[];
@@ -68,6 +71,7 @@ async function loadAll(){
   games=data?.games||[];
   matchSeries=data?.match_series||[];
   seriesSets=data?.series_sets||[];
+  seriesTeamSnapshots=snapshotError?[]:(snapshotData||[]);
   threeTeamSeries=data?.three_team_series||[];
   threeTeamGames=data?.three_team_games||[];
   settings=data?.settings||{id:1,monthly_fee:20000};
@@ -647,16 +651,22 @@ function renderSeriesHistory(m){
   const triple=threeSeriesForMeeting(m).filter(s=>s.status==='completed').sort((a,b)=>b.series_no-a.series_no);
   const normalHtml=rows.map(s=>{
     const sets=seriesSets.filter(x=>x.series_id===s.id).sort((a,b)=>a.set_no-b.set_no);
-    return `<div class="row" style="justify-content:space-between;padding:11px 0;border-bottom:1px solid #e5e7eb">
+    return `<div style="padding:11px 0;border-bottom:1px solid #e5e7eb">
       <div><b>${s.series_no}차 · ${s.team_a_name} ${s.team_a_wins}:${s.team_b_wins} ${s.team_b_name}</b>
-      <div style="font-size:12px;color:#6b7280">${s.winner_name} 승 · ${s.loser_name} 패 · ${won(s.fee_amount)} 청구 · ${sets.length}세트</div></div>
+      <div style="font-size:12px;color:#6b7280">${m.meeting_date} · ${s.best_of===3?'3판 2승제':'5판 3승제'} · ${s.winner_name} 승 · ${s.loser_name} 패 · ${won(s.fee_amount)} 청구 · ${sets.length}세트</div></div>${seriesSnapshotHtml('normal',s)}
     </div>`;
   }).join('');
-  const tripleHtml=triple.map(s=>`<div class="row" style="justify-content:space-between;padding:11px 0;border-bottom:1px solid #e5e7eb">
+  const tripleHtml=triple.map(s=>`<div style="padding:11px 0;border-bottom:1px solid #e5e7eb">
     <div><b>${s.series_no}차 · 3팀 단판 시리즈</b>
-    <div style="font-size:12px;color:#6b7280">${s.champion_name} 우승 · ${s.final_loser_name} 최종 패배 · 초기화 ${s.reset_count}회 · ${won(s.fee_amount)} 청구</div></div>
+    <div style="font-size:12px;color:#6b7280">${m.meeting_date} · 3팀 단판 승자연전 · ${s.champion_name} 우승 · ${s.final_loser_name} 최종 패배 · 초기화 ${s.reset_count}회 · ${won(s.fee_amount)} 청구</div></div>${seriesSnapshotHtml('three_team',s)}
   </div>`).join('');
   $('seriesHistory').innerHTML=(tripleHtml+normalHtml)||'<div class="empty">종료된 시리즈가 없습니다.</div>';
+}
+function snapshotMemberNames(ids,names=[]){return (names?.length?names:(ids||[]).map(id=>members.find(m=>m.id===id)?.name).filter(Boolean)).join(', ')||'없음'}
+function seriesSnapshotHtml(kind,s){
+  let snaps=seriesTeamSnapshots.filter(x=>x.series_kind===kind&&x.series_id===s.id).sort((a,b)=>String(a.team_code).localeCompare(String(b.team_code)));
+  if(!snaps.length)snaps=kind==='normal'?[{team_code:'A',team_name:s.team_a_name,member_ids:s.team_a_members},{team_code:'B',team_name:s.team_b_name,member_ids:s.team_b_members}]:[{team_code:'A',team_name:s.team_1_name,member_ids:s.team_1_members},{team_code:'B',team_name:s.team_2_name,member_ids:s.team_2_members},{team_code:'C',team_name:s.team_3_name,member_ids:s.team_3_members}];
+  return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;margin-top:9px">${snaps.map(x=>`<div class="notice" style="margin:0"><b>${x.team_code==='WAIT'?'대기':x.team_name||x.team_code+'팀'}</b><br><span style="font-size:12px">${snapshotMemberNames(x.member_ids,x.member_names)}</span></div>`).join('')}</div>`;
 }
 function memberStats(memberId){
   const att=attendance.filter(a=>a.member_id===memberId&&a.attending).length;

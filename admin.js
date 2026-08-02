@@ -13,7 +13,7 @@ async function purgeOldAdminCachesV573(){
   }
 }
 
-let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], matchSeries=[], seriesSets=[], threeTeamSeries=[], threeTeamGames=[], threeTeamFeatureReady=true, settings={monthly_fee:20000};
+let members=[], meetings=[], attendance=[], teams=[], teamMembers=[], transactions=[], fees=[], feePayments=[], games=[], gameDues=[], gameFeeAdjustments=[], matchSeries=[], seriesSets=[], seriesTeamSnapshots=[], threeTeamSeries=[], threeTeamGames=[], threeTeamFeatureReady=true, settings={monthly_fee:20000};
 const openModal=id=>$(id).classList.add('show'),closeModal=id=>$(id).classList.remove('show');
 async function init(){
   await purgeOldAdminCachesV573();
@@ -121,10 +121,12 @@ async function loadAll(){
   // SQL 미적용/권한 오류가 있어도 기존 데이터 배열을 건드리지 않는다.
   const optionalQueries=await Promise.all([
     sb.from('three_team_series').select('*').order('created_at',{ascending:false}),
-    sb.from('three_team_games').select('*').order('game_no',{ascending:true})
+    sb.from('three_team_games').select('*').order('game_no',{ascending:true}),
+    sb.from('member_game_fee_adjustments').select('*').order('created_at',{ascending:false}),
+    sb.from('series_team_snapshots').select('*').order('created_at',{ascending:false})
   ]);
 
-  const optionalError=optionalQueries.map(q=>q?.error).find(Boolean);
+  const optionalError=optionalQueries.slice(0,2).map(q=>q?.error).find(Boolean);
   if(optionalError){
     threeTeamFeatureReady=false;
     threeTeamSeries=[];
@@ -135,6 +137,8 @@ async function loadAll(){
     threeTeamSeries=optionalQueries[0].data||[];
     threeTeamGames=optionalQueries[1].data||[];
   }
+  gameFeeAdjustments=optionalQueries[2]?.error?[]:(optionalQueries[2].data||[]);
+  seriesTeamSnapshots=optionalQueries[3]?.error?[]:(optionalQueries[3].data||[]);
 
   renderAll();
 }
@@ -697,16 +701,28 @@ function renderSeriesHistory(m){
   const triple=threeSeriesForMeeting(m).filter(s=>s.status==='completed').sort((a,b)=>b.series_no-a.series_no);
   const normalHtml=rows.map(s=>{
     const sets=seriesSets.filter(x=>x.series_id===s.id).sort((a,b)=>a.set_no-b.set_no);
-    return `<div class="row" style="justify-content:space-between;padding:11px 0;border-bottom:1px solid #e5e7eb">
+    return `<div style="padding:11px 0;border-bottom:1px solid #e5e7eb">
       <div><b>${s.series_no}차 · ${s.team_a_name} ${s.team_a_wins}:${s.team_b_wins} ${s.team_b_name}</b>
-      <div style="font-size:12px;color:#6b7280">${s.winner_name} 승 · ${s.loser_name} 패 · ${won(s.fee_amount)} 청구 · ${sets.length}세트</div></div>
+      <div style="font-size:12px;color:#6b7280">${m.meeting_date} · ${s.best_of===3?'3판 2승제':'5판 3승제'} · ${s.winner_name} 승 · ${s.loser_name} 패 · ${won(s.fee_amount)} 청구 · ${sets.length}세트</div></div>
+      ${seriesSnapshotHtml('normal',s)}
     </div>`;
   }).join('');
-  const tripleHtml=triple.map(s=>`<div class="row" style="justify-content:space-between;padding:11px 0;border-bottom:1px solid #e5e7eb">
+  const tripleHtml=triple.map(s=>`<div style="padding:11px 0;border-bottom:1px solid #e5e7eb">
     <div><b>${s.series_no}차 · 3팀 단판 시리즈</b>
-    <div style="font-size:12px;color:#6b7280">${s.champion_name} 우승 · ${s.final_loser_name} 최종 패배 · 초기화 ${s.reset_count}회 · ${won(s.fee_amount)} 청구</div></div>
+    <div style="font-size:12px;color:#6b7280">${m.meeting_date} · 3팀 단판 승자연전 · ${s.champion_name} 우승 · ${s.final_loser_name} 최종 패배 · 초기화 ${s.reset_count}회 · ${won(s.fee_amount)} 청구</div></div>
+    ${seriesSnapshotHtml('three_team',s)}
   </div>`).join('');
   $('seriesHistory').innerHTML=(tripleHtml+normalHtml)||'<div class="empty">종료된 시리즈가 없습니다.</div>';
+}
+function snapshotMemberNames(ids,names=[]){return (names?.length?names:(ids||[]).map(id=>members.find(m=>m.id===id)?.name).filter(Boolean)).join(', ')||'없음'}
+function seriesSnapshotHtml(kind,s){
+  let snaps=seriesTeamSnapshots.filter(x=>x.series_kind===kind&&x.series_id===s.id).sort((a,b)=>String(a.team_code).localeCompare(String(b.team_code)));
+  if(!snaps.length){
+    snaps=kind==='normal'?
+      [{team_code:'A',team_name:s.team_a_name,member_ids:s.team_a_members},{team_code:'B',team_name:s.team_b_name,member_ids:s.team_b_members}]:
+      [{team_code:'A',team_name:s.team_1_name,member_ids:s.team_1_members},{team_code:'B',team_name:s.team_2_name,member_ids:s.team_2_members},{team_code:'C',team_name:s.team_3_name,member_ids:s.team_3_members}];
+  }
+  return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;margin-top:9px">${snaps.map(x=>`<div class="notice" style="margin:0"><b>${x.team_code==='WAIT'?'대기':x.team_name||x.team_code+'팀'}</b><br><span style="font-size:12px">${snapshotMemberNames(x.member_ids,x.member_names)}</span></div>`).join('')}</div>`;
 }
 function memberStats(memberId){
   const att=attendance.filter(a=>a.member_id===memberId&&a.attending).length;
@@ -765,6 +781,17 @@ function renderReceivables(){
     if(d.status==='paid')g.paid+=Number(d.amount);
     else{g.unpaid+=Number(d.amount);g.unpaidCount++}
   });
+  gameFeeAdjustments.filter(a=>String(a.adjustment_month).slice(0,7)===month).forEach(a=>{
+    const m=members.find(x=>x.id===a.member_id);
+    if(!grouped[a.member_id])grouped[a.member_id]={memberId:a.member_id,name:m?.name||'-',total:0,paid:0,unpaid:0,unpaidCount:0};
+    const g=grouped[a.member_id];
+    g.total+=Number(a.charge_delta||0);
+    g.unpaid+=Number(a.balance_delta||0);
+    g.paid=g.total-g.unpaid;
+  });
+  members.filter(m=>m.active!==false).forEach(m=>{
+    if(!grouped[m.id])grouped[m.id]={memberId:m.id,name:m.name,total:0,paid:0,unpaid:0,unpaidCount:0};
+  });
   let rows=Object.values(grouped);
   if(status==='unpaid')rows=rows.filter(x=>x.unpaid>0);
   if(status==='paid')rows=rows.filter(x=>x.paid>0);
@@ -779,8 +806,45 @@ function renderReceivables(){
   $('duesBody').innerHTML=rows.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr>
     <td><b>${x.name}</b></td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td>
     <td class="${x.unpaid>0?'money-out':''}"><b>${won(x.unpaid)}</b></td><td>${x.unpaidCount}건</td>
-    <td><div class="row">${x.unpaid>0?`<button class="btn green small" onclick="markMemberDuesPaid('${x.memberId}','${month}')">합계 입금확인</button><button class="btn blue small" onclick="shareMemberGameDues('${x.memberId}')">공유</button>`:'<span class="badge" style="background:#dcfce7;color:#166534">완납</span>'}</div></td>
+    <td><div class="row">${x.unpaid>0?`<button class="btn green small" onclick="markMemberDuesPaid('${x.memberId}','${month}')">합계 입금확인</button><button class="btn blue small" onclick="shareMemberGameDues('${x.memberId}')">공유</button>`:'<span class="badge" style="background:#dcfce7;color:#166534">완납</span>'}<button class="btn dark small" onclick="openGameFeeAdjustment('${x.memberId}','${month}')">수정</button><button class="btn small" onclick="openGameFeeHistory('${x.memberId}')">이력</button></div></td>
   </tr>`).join('')||'<tr><td colspan="6" class="empty">내역 없음</td></tr>';
+}
+
+function memberGameFeeTotals(memberId,month){
+  const dues=gameDues.filter(d=>d.member_id===memberId&&monthKey(d.due_date)===month);
+  const adjustments=gameFeeAdjustments.filter(a=>a.member_id===memberId&&String(a.adjustment_month).slice(0,7)===month);
+  const automaticCharge=dues.reduce((s,d)=>s+Number(d.amount||0),0);
+  const automaticBalance=dues.filter(d=>d.status==='unpaid').reduce((s,d)=>s+Number(d.amount||0),0);
+  return {
+    charge:automaticCharge+adjustments.reduce((s,a)=>s+Number(a.charge_delta||0),0),
+    balance:automaticBalance+adjustments.reduce((s,a)=>s+Number(a.balance_delta||0),0)
+  };
+}
+function openGameFeeAdjustment(memberId,month=currentDuesMonth()){
+  const member=members.find(m=>m.id===memberId),totals=memberGameFeeTotals(memberId,month);
+  $('gameFeeAdjustMemberId').value=memberId;
+  $('gameFeeAdjustMemberLabel').value=`${member?.name||'-'} · ${month}`;
+  $('gameFeeAdjustCharge').value=totals.charge;
+  $('gameFeeAdjustBalance').value=totals.balance;
+  $('gameFeeAdjustReason').value='';
+  openModal('gameFeeAdjustModal');
+}
+async function saveGameFeeAdjustment(){
+  const memberId=$('gameFeeAdjustMemberId').value,month=currentDuesMonth();
+  const charge=Number($('gameFeeAdjustCharge').value),balance=Number($('gameFeeAdjustBalance').value);
+  const reason=$('gameFeeAdjustReason').value.trim();
+  if(!Number.isFinite(charge)||!Number.isFinite(balance)||charge<0||balance<0||balance>charge)return toast('청구액과 잔액을 확인하세요.');
+  if(reason.length<2)return toast('변경 사유를 입력하세요.');
+  const {error}=await sb.rpc('admin_adjust_member_game_fee_v591',{p_member_id:memberId,p_month:month+'-01',p_new_charge:charge,p_new_balance:balance,p_reason:reason});
+  if(error)return toast('게임비 수정 실패: '+error.message);
+  closeModal('gameFeeAdjustModal');toast('게임비 수정과 이력을 저장했습니다.');await loadAll();
+}
+function openGameFeeHistory(memberId){
+  const member=members.find(m=>m.id===memberId);
+  const rows=gameFeeAdjustments.filter(a=>a.member_id===memberId);
+  $('gameFeeHistoryTitle').textContent=`${member?.name||'회원'} · 게임비 수정 이력`;
+  $('gameFeeHistoryBody').innerHTML=rows.map(a=>`<div style="padding:11px 0;border-bottom:1px solid #e5e7eb"><b>${String(a.adjustment_month).slice(0,7)} · ${a.reason}</b><div style="font-size:12px;color:#6b7280;margin-top:4px">청구 ${won(a.charge_before)} → ${won(a.charge_after)} · 잔액 ${won(a.balance_before)} → ${won(a.balance_after)}<br>${new Date(a.created_at).toLocaleString('ko-KR')}</div></div>`).join('')||'<div class="empty">수정 이력이 없습니다.</div>';
+  openModal('gameFeeHistoryModal');
 }
 async function markMemberDuesPaid(memberId,month){
   const rows=gameDues.filter(d=>d.member_id===memberId&&d.status==='unpaid'&&monthKey(d.due_date)===month);
@@ -789,7 +853,7 @@ async function markMemberDuesPaid(memberId,month){
   if(!rows.length)return toast('납부할 게임비가 없습니다.');
   if(!confirm(`${member?.name||'회원'}의 게임비 합계 ${won(amount)} 입금을 확인했나요?
 확인 시 수입 내역 1건으로 합산 반영됩니다.`))return;
-  const {error}=await sb.rpc('admin_mark_member_game_dues_paid',{p_member_id:memberId,p_month:month+'-01',p_paid_date:today()});
+  const {error}=await sb.rpc('admin_mark_member_game_fee_paid_v591',{p_member_id:memberId,p_month:month+'-01',p_paid_date:today()});
   if(error)return toast(error.message);
   toast('게임비 합계 입금 확인 / 수입 반영 완료');
   await loadAll()

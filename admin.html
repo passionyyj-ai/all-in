@@ -205,6 +205,24 @@
 <button class="btn dark" style="width:100%;margin-top:14px" onclick="saveSeriesSet()">세트 점수 저장</button>
 </div></div>
 
+<div class="modal" id="gameFeeAdjustModal"><div class="modal-card">
+  <div class="modal-head"><h3>회원 게임비 수정</h3><button class="close" onclick="closeModal('gameFeeAdjustModal')">×</button></div>
+  <input id="gameFeeAdjustMemberId" type="hidden">
+  <div class="field"><label>회원 · 적용월</label><input id="gameFeeAdjustMemberLabel" disabled></div>
+  <div class="form-grid" style="margin-top:10px">
+    <div class="field"><label>총 청구액 *</label><input id="gameFeeAdjustCharge" type="number" min="0" step="1000" inputmode="numeric"></div>
+    <div class="field"><label>게임비 잔액 *</label><input id="gameFeeAdjustBalance" type="number" min="0" step="1000" inputmode="numeric"></div>
+  </div>
+  <div class="field" style="margin-top:10px"><label>변경 사유 *</label><textarea id="gameFeeAdjustReason" rows="3" maxlength="300" placeholder="예: 운영 오류로 중복 청구 정정"></textarea></div>
+  <div class="notice" style="margin-top:10px">자동 생성된 경기 기록은 유지되고, 입력한 차액만 별도 조정 이력으로 저장됩니다.</div>
+  <button class="btn dark" style="width:100%;margin-top:14px" onclick="saveGameFeeAdjustment()">수정 저장</button>
+</div></div>
+
+<div class="modal" id="gameFeeHistoryModal"><div class="modal-card">
+  <div class="modal-head"><h3 id="gameFeeHistoryTitle">게임비 수정 이력</h3><button class="close" onclick="closeModal('gameFeeHistoryModal')">×</button></div>
+  <div id="gameFeeHistoryBody"></div>
+</div></div>
+
 <div class="modal" id="resetModal"><div class="modal-card">
   <div class="modal-head"><h3 style="color:#dc2626">운영 데이터 초기화</h3><button class="close" onclick="closeModal('resetModal')">×</button></div>
   <div class="notice"><b>삭제 후 복구할 수 없습니다.</b><br>회원 명단은 유지되며 그 외 회비·입출금·모임·참석·팀·경기·게임비·시리즈 데이터가 모두 삭제됩니다.</div>

@@ -1,0 +1,7 @@
+ALLIN V5.9.1 적용 순서
+
+1. Supabase 대시보드의 SQL Editor에서 ALLIN_V591_GameFee_Series_History.sql 전체 내용을 실행합니다.
+2. SQL 실행 성공을 확인한 뒤 배포 ZIP의 파일을 GitHub Pages 저장소에 덮어씁니다.
+3. 설치된 ALLIN 앱을 완전히 종료하고 다시 실행합니다.
+
+주의: V5.9의 ALLIN_V59_Remove_Referee.sql이 먼저 적용된 환경을 기준으로 합니다.

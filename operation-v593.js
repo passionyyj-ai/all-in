@@ -331,7 +331,7 @@ async function generateTeams(mode='balanced'){
   const rpc=mode==='random'?'operation_generate_random_teams':'operation_generate_balanced_teams';
   const {data,error}=await sb.rpc(rpc,{...operationAuthParams(),p_meeting_id:m.id});
   if(error)return toast(error.message);
-  toast(`${mode==='random'?'완전 랜덤':'포지션 균형'} 팀 ${data?.team_count||0}개 생성`);
+  toast(`${mode==='random'?'완전 랜덤':`포지션·실력 균형(실력합 차이 ${data?.skill_gap??0})`} 팀 ${data?.team_count||0}개 생성`);
   await loadAll()
 }
 function teamMemberRow(x,currentTeamId,ts,locked=false){
@@ -525,7 +525,7 @@ async function startThreeTeamSeries(){
 function renderThreeTeamArea(m,s){
   const rows=threeGamesForSeries(s.id);
   const pending=rows.find(g=>g.score_a===null||g.score_b===null);
-  const fee=s.manual_fee_amount??(s.reset_count>0?4000:2000);
+  const fee=(Number(s.manual_fee_amount)||2000)*(s.reset_count>0?2:1);
   const phaseLabel=s.phase==='loser_final'?'최종 패자 결정전':'우승팀 결정';
   $('seriesArea').innerHTML=`<div class="grid g4">
     <div class="kpi"><div class="label">진행 회차</div><div class="value">${s.cycle_no}회차</div></div>

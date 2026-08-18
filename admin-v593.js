@@ -169,16 +169,16 @@ function syncSecondaryPositions(selected=null){
 function selectedSecondaryPositions(){return [...document.querySelectorAll('#memberSecondaryPositions input[type=checkbox]:checked')].map(c=>c.value).filter(p=>p!==$('memberPosition').value)}
 function secondaryPositionBadges(m){const rows=Array.isArray(m.secondary_positions)?m.secondary_positions.filter(p=>POSITIONS.includes(p)&&p!==m.position):[];return rows.length?rows.map(p=>badge(p)).join(' '):'<span class="muted">-</span>'}
 function openMember(id){
-  const m=members.find(x=>x.id===id);$('memberTitle').textContent=m?'회원 수정':'회원 추가';$('memberId').value=m?.id||'';$('memberName').value=m?.name||'';$('memberBirthYear').value=m?.birth_year||'';$('memberPhone').value=m?.phone||'';$('memberPosition').value=m?.position||'공격';syncSecondaryPositions(m?.secondary_positions||[]);$('memberPin').value='';$('memberPin').placeholder=m?'변경할 때만 새 PIN 입력':'4자리 숫자';openModal('memberModal')
+  const m=members.find(x=>x.id===id);$('memberTitle').textContent=m?'회원 수정':'회원 추가';$('memberId').value=m?.id||'';$('memberName').value=m?.name||'';$('memberBirthYear').value=m?.birth_year||'';$('memberPhone').value=m?.phone||'';$('memberPosition').value=m?.position||'공격';$('memberSkillLevel').value=String(m?.skill_level||3);syncSecondaryPositions(m?.secondary_positions||[]);$('memberPin').value='';$('memberPin').placeholder=m?'변경할 때만 새 PIN 입력':'4자리 숫자';openModal('memberModal')
 }
 async function saveMember(){
   const id=$('memberId').value,name=$('memberName').value.trim(),pin=$('memberPin').value.trim();if(!name)return toast('이름을 입력하세요.');if((!id&&!/^\d{4}$/.test(pin))||(pin&&!/^\d{4}$/.test(pin)))return toast('PIN은 4자리 숫자입니다.');
-  const payload={name,birth_year:Number($('memberBirthYear').value)||null,phone:$('memberPhone').value.trim()||null,position:$('memberPosition').value,secondary_positions:selectedSecondaryPositions()};
+  const payload={name,birth_year:Number($('memberBirthYear').value)||null,phone:$('memberPhone').value.trim()||null,position:$('memberPosition').value,secondary_positions:selectedSecondaryPositions(),skill_level:Number($('memberSkillLevel').value)||3};
   let data,error;
   if(id){({data,error}=await sb.from('members').update(payload).eq('id',id));}
   else{
     ({data,error}=await sb.rpc('admin_create_member_v40',{p_name:name,p_birth_year:payload.birth_year,p_phone:payload.phone,p_position:payload.position,p_pin:pin}));
-    if(!error){const r=await sb.from('members').update({secondary_positions:payload.secondary_positions}).eq('id',data);if(r.error)error=r.error;}
+    if(!error){const r=await sb.from('members').update({secondary_positions:payload.secondary_positions,skill_level:payload.skill_level}).eq('id',data);if(r.error)error=r.error;}
   }
   if(error)return toast(error.message);
   if(id&&pin){const r=await sb.rpc('admin_set_member_pin',{p_member_id:id,p_pin:pin});if(r.error)return toast(r.error.message)}
@@ -190,7 +190,7 @@ function renderMembers(){
   const rows=members
     .filter(m=>(!q||(m.name+(m.phone||'')).includes(q))&&(!p||m.position===p))
     .sort((a,b)=>(POSITIONS.indexOf(a.position)-POSITIONS.indexOf(b.position))||a.name.localeCompare(b.name,'ko'));
-  $('memberBody').innerHTML=rows.map(m=>`<tr><td><b>${m.name}</b></td><td>${m.birth_year||'-'}</td><td>${m.phone||'-'}</td><td>${badge(m.position)}</td><td>${secondaryPositionBadges(m)}</td><td>••••</td><td><button class="btn small" onclick="openMember('${m.id}')">수정</button> <button class="btn red small" onclick="deleteMember('${m.id}')">삭제</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">회원 없음</td></tr>';
+  $('memberBody').innerHTML=rows.map(m=>`<tr><td><b>${m.name}</b></td><td>${m.birth_year||'-'}</td><td>${m.phone||'-'}</td><td>${badge(m.position)}</td><td>${secondaryPositionBadges(m)}</td><td><b>${m.skill_level||3}</b></td><td>••••</td><td><button class="btn small" onclick="openMember('${m.id}')">수정</button> <button class="btn red small" onclick="deleteMember('${m.id}')">삭제</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty">회원 없음</td></tr>';
 }
 function renderFinance(){
   if(!$('feeMonth').value)$('feeMonth').value=new Date().toISOString().slice(0,7);if(!$('txMonth').value)$('txMonth').value=new Date().toISOString().slice(0,7);$('feeAmount').value=settings.monthly_fee;
@@ -382,7 +382,7 @@ async function generateTeams(mode='balanced'){
   const rpc=mode==='random'?'admin_generate_random_teams_v51':'admin_generate_balanced_teams_v51';
   const {data,error}=await sb.rpc(rpc,{p_meeting_id:m.id});
   if(error)return toast(error.message);
-  toast(`${mode==='random'?'완전 랜덤':'포지션 균형'} 팀 ${data?.team_count||0}개 생성`);
+  toast(`${mode==='random'?'완전 랜덤':`포지션·실력 균형(실력합 차이 ${data?.skill_gap??0})`} 팀 ${data?.team_count||0}개 생성`);
   await loadAll()
 }
 function teamMemberRow(x,currentTeamId,ts,locked=false){
@@ -576,7 +576,7 @@ async function startThreeTeamSeries(){
 function renderThreeTeamArea(m,s){
   const rows=threeGamesForSeries(s.id);
   const pending=rows.find(g=>g.score_a===null||g.score_b===null);
-  const fee=s.manual_fee_amount??(s.reset_count>0?4000:2000);
+  const fee=(Number(s.manual_fee_amount)||2000)*(s.reset_count>0?2:1);
   const phaseLabel=s.phase==='loser_final'?'최종 패자 결정전':'우승팀 결정';
   $('seriesArea').innerHTML=`<div class="grid g4">
     <div class="kpi"><div class="label">진행 회차</div><div class="value">${s.cycle_no}회차</div></div>

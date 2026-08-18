@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.9.1">
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.9.5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -40,7 +40,7 @@
 </div>
 </section>
 
-<section id="members" class="view"><div class="title"><h2>회원 명단</h2><button class="btn dark small" onclick="openMember()">+ 회원 추가</button></div><div class="card"><div class="toolbar"><input id="memberSearchAdmin" placeholder="회원 검색" oninput="renderMembers()"><select id="posFilter" onchange="renderMembers()" aria-label="주 포지션 필터"><option value="">전체 주 포지션</option><option value="공격">주 포지션 · 공격</option><option value="토스">주 포지션 · 토스</option><option value="좌수비">주 포지션 · 좌수비</option><option value="우수비">주 포지션 · 우수비</option></select></div><div class="table-wrap"><table><thead><tr><th>이름</th><th>출생연도</th><th>연락처</th><th>주 포지션</th><th>보조 포지션</th><th>PIN</th><th>관리</th></tr></thead><tbody id="memberBody"></tbody></table></div></div></section>
+<section id="members" class="view"><div class="title"><h2>회원 명단</h2><button class="btn dark small" onclick="openMember()">+ 회원 추가</button></div><div class="card"><div class="toolbar"><input id="memberSearchAdmin" placeholder="회원 검색" oninput="renderMembers()"><select id="posFilter" onchange="renderMembers()" aria-label="주 포지션 필터"><option value="">전체 주 포지션</option><option value="공격">주 포지션 · 공격</option><option value="토스">주 포지션 · 토스</option><option value="좌수비">주 포지션 · 좌수비</option><option value="우수비">주 포지션 · 우수비</option></select></div><div class="table-wrap"><table><thead><tr><th>이름</th><th>출생연도</th><th>연락처</th><th>주 포지션</th><th>보조 포지션</th><th>실력</th><th>PIN</th><th>관리</th></tr></thead><tbody id="memberBody"></tbody></table></div></div></section>
 
 <section id="finance" class="view"><div class="title"><h2>회비 · 비용</h2><button class="btn dark small" onclick="openTx()">+ 입출금 등록</button></div><div id="financeKpis" class="grid g4"></div><div class="title"><h2>회원별 월 회비</h2></div><div class="card"><div class="toolbar"><input type="month" id="feeMonth" onchange="renderFees()"><div class="row"><input type="number" id="feeAmount" min="0" step="1000" style="width:125px"><button class="btn small" onclick="saveFeeAmount()">회비 저장</button></div></div><div class="table-wrap"><table><thead><tr><th>회원</th><th>포지션</th><th>회비</th><th>상태</th><th>납부일</th><th>관리</th></tr></thead><tbody id="feeBody"></tbody></table></div></div><div class="title"><h2>일자별 입출금</h2></div><div class="card"><div class="toolbar"><input type="month" id="txMonth" onchange="renderTx()"><select id="txTypeFilter" onchange="renderTx()"><option value="">전체</option><option value="income">수입</option><option value="expense">지출</option></select></div><div class="table-wrap"><table><thead><tr><th>일자</th><th>구분</th><th>항목</th><th>회원/대상</th><th>금액</th><th>비고</th><th>관리</th></tr></thead><tbody id="txBody"></tbody></table></div></div></section>
 
@@ -49,7 +49,7 @@
       <button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 생성</button>
       <button class="btn blue" onclick="generateTeams('random')">완전 랜덤 생성</button>
     </div>
-    <div class="notice" style="margin-top:10px"><b>포지션 균형</b>: 공격·토스·좌수비·우수비를 고려합니다.<br><b>완전 랜덤</b>: 포지션과 관계없이 참석자 전원을 무작위로 균등 배분합니다. 남는 인원도 각 팀에 자동 배치되어 대기자가 생기지 않습니다.</div><div class="notice" style="margin-top:10px"><b>관리자 직접 지정</b>: 팀 생성 후 각 회원 옆의 팀 선택 메뉴에서 원하는 팀으로 즉시 이동할 수 있습니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
+    <div class="notice" style="margin-top:10px"><b>포지션·실력 균형</b>: 주 포지션과 회원별 실력 등급을 함께 고려해 팀별 인원과 실력 합계를 맞춥니다.<br><b>완전 랜덤</b>: 포지션과 실력에 관계없이 참석자 전원을 무작위로 균등 배분합니다.</div><div class="notice" style="margin-top:10px"><b>관리자 직접 지정</b>: 팀 생성 후 각 회원 옆의 팀 선택 메뉴에서 원하는 팀 또는 대기로 즉시 이동할 수 있습니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
 
 <section id="matchday" class="view">
 <div class="title"><h2>일요일 경기 운영</h2><span>참석자 전원 강제 배분 → 경기 → 패배팀 게임비 → 재편성</span></div>
@@ -123,7 +123,7 @@
   <button class="btn dark" style="width:100%;margin-top:14px" onclick="changeAdminPassword()">비밀번호 변경</button>
 </div></div>
 
-<div class="modal" id="memberModal"><div class="modal-card"><div class="modal-head"><h3 id="memberTitle">회원 추가</h3><button class="close" onclick="closeModal('memberModal')">×</button></div><input id="memberId" type="hidden"><div class="form-grid"><div class="field"><label>이름 *</label><input id="memberName"></div><div class="field"><label>출생연도</label><input id="memberBirthYear" type="number" min="1930" max="2100" inputmode="numeric" placeholder="예: 1977"></div><div class="field"><label>연락처</label><input id="memberPhone" type="tel"></div><div class="field"><label>주 포지션 *</label><select id="memberPosition" onchange="syncSecondaryPositions()"><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div><div class="field"><label>보조 포지션 <small>(복수 선택)</small></label><div id="memberSecondaryPositions" class="position-checks"><label><input type="checkbox" value="공격"> 공격</label><label><input type="checkbox" value="토스"> 토스</label><label><input type="checkbox" value="좌수비"> 좌수비</label><label><input type="checkbox" value="우수비"> 우수비</label></div><small class="field-help">주 포지션을 제외하고 실제로 수행 가능한 포지션을 선택하세요.</small></div><div class="field"><label>참석 PIN *</label><input id="memberPin" type="password" inputmode="numeric" maxlength="4" placeholder="4자리 숫자"></div></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveMember()">저장</button></div></div>
+<div class="modal" id="memberModal"><div class="modal-card"><div class="modal-head"><h3 id="memberTitle">회원 추가</h3><button class="close" onclick="closeModal('memberModal')">×</button></div><input id="memberId" type="hidden"><div class="form-grid"><div class="field"><label>이름 *</label><input id="memberName"></div><div class="field"><label>출생연도</label><input id="memberBirthYear" type="number" min="1930" max="2100" inputmode="numeric" placeholder="예: 1977"></div><div class="field"><label>연락처</label><input id="memberPhone" type="tel"></div><div class="field"><label>주 포지션 *</label><select id="memberPosition" onchange="syncSecondaryPositions()"><option>공격</option><option>토스</option><option>좌수비</option><option>우수비</option></select></div><div class="field"><label>보조 포지션 <small>(복수 선택)</small></label><div id="memberSecondaryPositions" class="position-checks"><label><input type="checkbox" value="공격"> 공격</label><label><input type="checkbox" value="토스"> 토스</label><label><input type="checkbox" value="좌수비"> 좌수비</label><label><input type="checkbox" value="우수비"> 우수비</label></div><small class="field-help">주 포지션을 제외하고 실제로 수행 가능한 포지션을 선택하세요.</small></div><div class="field"><label>실력 *</label><select id="memberSkillLevel"><option value="1">1 · 입문</option><option value="2">2 · 초급</option><option value="3" selected>3 · 중급</option><option value="4">4 · 상급</option><option value="5">5 · 최상급</option></select><small class="field-help">포지션 균형 편성 시 팀별 실력 합계를 맞추는 데 사용합니다.</small></div><div class="field"><label>참석 PIN *</label><input id="memberPin" type="password" inputmode="numeric" maxlength="4" placeholder="4자리 숫자"></div></div><button class="btn dark" style="width:100%;margin-top:14px" onclick="saveMember()">저장</button></div></div>
 
 
 <div class="modal" id="feePaymentModal"><div class="modal-card">
@@ -243,7 +243,7 @@
 </div></div>
 
 <div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.3"></script><script src="common.js?v=5.9.3"></script><script src="admin-v593.js"></script><script src="pwa-admin.js?v=5.9.3"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.5"></script><script src="common.js?v=5.9.5"></script><script src="admin-v593.js?v=5.9.5"></script><script src="pwa-admin.js?v=5.9.5"></script>
 
 <script id="admin-keyboard-hardfix">
 document.addEventListener('DOMContentLoaded',()=>{
@@ -262,5 +262,5 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
-<script src="pwa-enhanced.js?v=5.9.3"></script>
+<script src="pwa-enhanced.js?v=5.9.5"></script>
 </body></html>

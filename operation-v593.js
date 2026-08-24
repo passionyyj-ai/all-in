@@ -324,14 +324,16 @@ async function saveAttendance(){
   toast(`참석 ${attendingIds.length}명 · 불참 ${absentIds.length}명으로 저장했습니다.`);
   await loadAll();
 }
-async function generateTeams(mode='balanced'){
+async function generateTeams(mode='balanced',button=null){
   const m=currentMeeting();if(!m)return;
   const active=matchSeries.find(s=>s.meeting_id===m.id&&s.status==='active')||threeTeamSeries.find(s=>s.meeting_id===m.id&&s.status==='active');
   if(active)return toast('진행 중인 시리즈를 먼저 종료하세요.');
-  const rpc=mode==='random'?'operation_generate_random_teams':'operation_generate_balanced_teams';
-  const {data,error}=await sb.rpc(rpc,{...operationAuthParams(),p_meeting_id:m.id});
+  const selected=button?.closest('.card')?.querySelector('.team-count-select')?.value||'';
+  const teamCount=selected?Number(selected):null;
+  const rpc=mode==='random'?'operation_generate_random_teams_v596':'operation_generate_balanced_teams_v596';
+  const {data,error}=await sb.rpc(rpc,{...operationAuthParams(),p_meeting_id:m.id,p_team_count:teamCount});
   if(error)return toast(error.message);
-  toast(`${mode==='random'?'완전 랜덤':`포지션·실력 균형(실력합 차이 ${data?.skill_gap??0})`} 팀 ${data?.team_count||0}개 생성`);
+  toast(`${mode==='random'?'완전 랜덤':`포지션·실력 균형(실력합 차이 ${data?.skill_gap??0})`} 팀 ${data?.team_count||0}개 생성 · 대기 ${data?.excluded_count||0}명 유지`);
   await loadAll()
 }
 function teamMemberRow(x,currentTeamId,ts,locked=false){

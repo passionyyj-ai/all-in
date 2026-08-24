@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.9.5">
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.9.6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -46,10 +46,11 @@
 
 <section id="attendance" class="view"><div class="title"><h2>일요일 모임 · 참석</h2><button class="btn dark small" onclick="createMeeting()">+ 다음 모임 생성</button></div><div class="card"><div class="toolbar"><select id="meetingSelect" onchange="renderAttendance()"></select><button class="btn blue small" onclick="openAttendance()">총무 직접 수정</button></div><div id="attendanceSummary"></div></div><div class="title"><h2>팀 편성</h2><span>자동 배분 후 관리자가 직접 변경</span></div><div class="card">
     <div class="row">
-      <button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 생성</button>
-      <button class="btn blue" onclick="generateTeams('random')">완전 랜덤 생성</button>
+      <select class="team-count-select" aria-label="생성할 팀 수"><option value="">팀 수 자동</option><option value="2">2팀</option><option value="3">3팀</option></select>
+      <button class="btn dark" onclick="generateTeams('balanced',this)">포지션 균형 생성</button>
+      <button class="btn blue" onclick="generateTeams('random',this)">완전 랜덤 생성</button>
     </div>
-    <div class="notice" style="margin-top:10px"><b>포지션·실력 균형</b>: 주 포지션과 회원별 실력 등급을 함께 고려해 팀별 인원과 실력 합계를 맞춥니다.<br><b>완전 랜덤</b>: 포지션과 실력에 관계없이 참석자 전원을 무작위로 균등 배분합니다.</div><div class="notice" style="margin-top:10px"><b>관리자 직접 지정</b>: 팀 생성 후 각 회원 옆의 팀 선택 메뉴에서 원하는 팀 또는 대기로 즉시 이동할 수 있습니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
+    <div class="notice" style="margin-top:10px"><b>포지션·실력 균형</b>: 주 포지션과 회원별 실력 등급을 함께 고려해 팀별 인원과 실력 합계를 맞춥니다.<br><b>완전 랜덤</b>: 포지션과 실력에 관계없이 편성 대상자를 무작위로 균등 배분합니다.</div><div class="notice" style="margin-top:10px"><b>중간 이탈자 제외</b>: 회원을 먼저 <b>대기</b>로 변경한 뒤 다시 편성하면 그 회원은 제외되고 대기 상태가 유지됩니다. 진행 중인 시리즈는 먼저 종료하거나 취소하세요.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
 
 <section id="matchday" class="view">
 <div class="title"><h2>일요일 경기 운영</h2><span>참석자 전원 강제 배분 → 경기 → 패배팀 게임비 → 재편성</span></div>
@@ -64,10 +65,11 @@
 <div class="title"><h2>1. 팀 편성</h2><span id="teamGenerationStatus"></span></div>
 <div class="card">
   <div class="row">
-    <button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 편성</button>
-    <button class="btn blue" onclick="generateTeams('random')">완전 랜덤 편성</button>
+    <select class="team-count-select" aria-label="생성할 팀 수"><option value="">팀 수 자동</option><option value="2">2팀</option><option value="3">3팀</option></select>
+    <button class="btn dark" onclick="generateTeams('balanced',this)">포지션 균형 편성</button>
+    <button class="btn blue" onclick="generateTeams('random',this)">완전 랜덤 편성</button>
   </div>
-  <div class="notice" style="margin-top:10px">진행 중인 시리즈가 있으면 팀을 다시 편성하거나 회원의 팀을 변경할 수 없습니다. 참석자는 모두 팀에 배정되며 대기인원은 발생하지 않습니다.</div>
+  <div class="notice" style="margin-top:10px">팀 수를 자동·2팀·3팀으로 직접 정할 수 있습니다. 중간 이탈자는 대기로 변경한 뒤 재편성하세요. 진행 중인 시리즈가 있으면 팀 또는 대기 상태를 변경할 수 없습니다.</div>
   <div id="matchdayTeams" style="margin-top:12px"></div>
 </div>
 
@@ -243,7 +245,7 @@
 </div></div>
 
 <div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.5"></script><script src="common.js?v=5.9.5"></script><script src="admin-v593.js?v=5.9.5"></script><script src="pwa-admin.js?v=5.9.5"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.6"></script><script src="common.js?v=5.9.6"></script><script src="admin-v593.js?v=5.9.6"></script><script src="pwa-admin.js?v=5.9.6"></script>
 
 <script id="admin-keyboard-hardfix">
 document.addEventListener('DOMContentLoaded',()=>{
@@ -262,5 +264,5 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
-<script src="pwa-enhanced.js?v=5.9.5"></script>
+<script src="pwa-enhanced.js?v=5.9.6"></script>
 </body></html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#111827" name="theme-color"/><title>올인 족구단 총무</title><link href="styles.css?v=5.9.5" rel="stylesheet"/>
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#111827" name="theme-color"/><title>올인 족구단 총무</title><link href="styles.css?v=5.9.6" rel="stylesheet"/>
 <meta content="#080b10" name="theme-color"/>
 <meta content="yes" name="apple-mobile-web-app-capable"/>
 <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
@@ -14,10 +14,11 @@
 
 <section class="view" id="attendance"><div class="title"><h2>일요일 모임 · 참석</h2></div><div class="card"><div class="toolbar"><select id="meetingSelect" onchange="renderAttendance()"></select><button class="btn blue small" onclick="openAttendance()">총무 직접 수정</button></div><div id="attendanceSummary"></div></div><div class="title"><h2>팀 편성</h2><span>자동 배분 후 관리자가 직접 변경</span></div><div class="card">
 <div class="row">
-<button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 생성</button>
-<button class="btn blue" onclick="generateTeams('random')">완전 랜덤 생성</button>
+<select class="team-count-select" aria-label="생성할 팀 수"><option value="">팀 수 자동</option><option value="2">2팀</option><option value="3">3팀</option></select>
+<button class="btn dark" onclick="generateTeams('balanced',this)">포지션 균형 생성</button>
+<button class="btn blue" onclick="generateTeams('random',this)">완전 랜덤 생성</button>
 </div>
-<div class="notice" style="margin-top:10px"><b>포지션 균형</b>: 공격·토스·좌수비·우수비를 고려합니다.<br/><b>완전 랜덤</b>: 포지션과 관계없이 참석자 전원을 무작위로 균등 배분합니다. 남는 인원도 각 팀에 자동 배치되어 대기자가 생기지 않습니다.</div><div class="notice" style="margin-top:10px"><b>관리자 직접 지정</b>: 팀 생성 후 각 회원 옆의 팀 선택 메뉴에서 원하는 팀으로 즉시 이동할 수 있습니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
+<div class="notice" style="margin-top:10px"><b>포지션·실력 균형</b>: 주 포지션과 실력 등급을 고려합니다.<br/><b>완전 랜덤</b>: 편성 대상자를 무작위로 균등 배분합니다.</div><div class="notice" style="margin-top:10px"><b>중간 이탈자 제외</b>: 회원을 먼저 <b>대기</b>로 변경한 뒤 다시 편성하면 그 회원은 제외되고 대기 상태가 유지됩니다.</div><div id="teamArea" style="margin-top:12px"></div></div></section>
 <section class="view active" id="matchday">
 <div class="title"><h2>일요일 경기 운영</h2><span>참석자 전원 강제 배분 → 경기 → 패배팀 게임비 → 재편성</span></div>
 <div class="card">
@@ -30,10 +31,11 @@
 <div class="title"><h2>1. 팀 편성</h2><span id="teamGenerationStatus"></span></div>
 <div class="card">
 <div class="row">
-<button class="btn dark" onclick="generateTeams('balanced')">포지션 균형 편성</button>
-<button class="btn blue" onclick="generateTeams('random')">완전 랜덤 편성</button>
+<select class="team-count-select" aria-label="생성할 팀 수"><option value="">팀 수 자동</option><option value="2">2팀</option><option value="3">3팀</option></select>
+<button class="btn dark" onclick="generateTeams('balanced',this)">포지션 균형 편성</button>
+<button class="btn blue" onclick="generateTeams('random',this)">완전 랜덤 편성</button>
 </div>
-<div class="notice" style="margin-top:10px">진행 중인 시리즈가 있으면 팀을 다시 편성하거나 회원의 팀을 변경할 수 없습니다. 참석자는 모두 팀에 배정되며 대기인원은 발생하지 않습니다.</div>
+<div class="notice" style="margin-top:10px">팀 수를 자동·2팀·3팀으로 직접 정할 수 있습니다. 중간 이탈자는 대기로 변경한 뒤 재편성하세요. 진행 중인 시리즈가 있으면 팀 또는 대기 상태를 변경할 수 없습니다.</div>
 <div id="matchdayTeams" style="margin-top:12px"></div>
 </div>
 <div class="title"><h2>2. 시리즈 시작</h2><span>2팀: 다전제 · 3팀: 단판 승자연전</span></div>
@@ -95,7 +97,7 @@
 <button class="btn red" onclick="executeReset()" style="width:100%;margin-top:14px">정말 초기화</button>
 </div></div>
 <div class="toast" id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.5"></script><script src="common.js?v=5.9.5"></script><script src="operation-v593.js?v=5.9.5"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.6"></script><script src="common.js?v=5.9.6"></script><script src="operation-v593.js?v=5.9.6"></script>
 
 <nav class="bottom operation-only-nav">
 <div class="bottom-inner operation-bottom">
@@ -104,5 +106,5 @@
 <button class="nav" onclick="returnToMember()" type="button"><b>↩</b>회원으로</button>
 </div>
 </nav>
-<script src="pwa-enhanced.js?v=5.9.5"></script>
+<script src="pwa-enhanced.js?v=5.9.6"></script>
 </body></html>

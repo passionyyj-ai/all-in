@@ -757,6 +757,34 @@ function memberStats(memberId){
   const wins=played.filter(g=>teamMembers.some(tm=>tm.member_id===memberId&&tm.team_id===g.winner_team_id)).length;
   return {attendance:att,games:played.length,wins,winRate:played.length?Math.round(wins/played.length*100):0}
 }
+function gameDueSeriesKey(d){
+  if(d.three_team_series_id)return 'T:'+d.three_team_series_id;
+  if(d.series_id)return 'S:'+d.series_id;
+  if(d.game_id)return 'G:'+d.game_id;
+  return 'D:'+d.id;
+}
+function gameDueSeriesMeta(key,rows=[]){
+  const [kind,id]=String(key).split(':');
+  const first=rows[0]||{};
+  const meeting=meetings.find(m=>m.id===first.meeting_id);
+  const date=meeting?.meeting_date||first.due_date||'-';
+  if(kind==='S'){
+    const s=matchSeries.find(x=>x.id===id);
+    const loser=s?.winner_side==='A'?s?.team_b_name:s?.winner_side==='B'?s?.team_a_name:
+      s?.team_a_result==='win'?s?.team_b_name:s?.team_b_result==='win'?s?.team_a_name:'패배팀';
+    return {date,title:`${s?.series_no||'-'}차 시리즈 · ${s?.team_a_name||'A팀'} vs ${s?.team_b_name||'B팀'}`,loser,kind:'2팀 시리즈'};
+  }
+  if(kind==='T'){
+    const s=threeTeamSeries.find(x=>x.id===id);
+    return {date,title:`${s?.series_no||'-'}차 3팀 단판 시리즈`,loser:s?.final_loser_name||'최종 패배팀',kind:'3팀 시리즈'};
+  }
+  if(kind==='G'){
+    const g=games.find(x=>x.id===id),ta=teams.find(t=>t.id===g?.team_a),tb=teams.find(t=>t.id===g?.team_b),winner=teams.find(t=>t.id===g?.winner_team_id);
+    const loser=winner?.id===ta?.id?tb?.team_name:winner?.id===tb?.id?ta?.team_name:'패배팀';
+    return {date,title:`단판 경기 · ${ta?.team_name||'A팀'} vs ${tb?.team_name||'B팀'}`,loser,kind:'단판 경기'};
+  }
+  return {date,title:'게임비 수동/이전 기록',loser:'대상 회원',kind:'기타'};
+}
 function renderReceivables(){
   if(!$('duesBody'))return;
   if(!$('duesMonth').value)$('duesMonth').value=new Date().toISOString().slice(0,7);
@@ -765,52 +793,31 @@ function renderReceivables(){
 
   const meetingGroups={};
   monthRows.forEach(d=>{
-    const key=d.meeting_id||d.due_date;
-    const meeting=meetings.find(m=>m.id===d.meeting_id);
-    if(!meetingGroups[key])meetingGroups[key]={
-      date:meeting?.meeting_date||d.due_date,
-      rows:[]
-    };
+    const key=gameDueSeriesKey(d);
+    if(!meetingGroups[key])meetingGroups[key]={key,rows:[]};
     meetingGroups[key].rows.push(d);
   });
   const monthAdjustments=gameFeeAdjustments.filter(a=>String(a.adjustment_month).slice(0,7)===month);
-  const latestMeetingDate=Object.values(meetingGroups).map(g=>g.date).sort().at(-1);
-
-  const meetingHtml=Object.values(meetingGroups).sort((a,b)=>b.date.localeCompare(a.date)).map(g=>{
-    const grouped={};
-    g.rows.forEach(d=>{
-      const m=members.find(x=>x.id===d.member_id);
-      if(!grouped[d.member_id])grouped[d.member_id]={name:m?.name||'-',total:0,paid:0,unpaid:0};
-      grouped[d.member_id].total+=Number(d.amount);
-      if(d.status==='paid')grouped[d.member_id].paid+=Number(d.amount);
-      else grouped[d.member_id].unpaid+=Number(d.amount);
-    });
-    if(g.date===latestMeetingDate){
-      monthAdjustments.forEach(a=>{
-        const m=members.find(x=>x.id===a.member_id);
-        if(!grouped[a.member_id])grouped[a.member_id]={name:m?.name||'-',total:0,paid:0,unpaid:0,adjusted:false};
-        const row=grouped[a.member_id];
-        row.total+=Number(a.charge_delta||0);
-        row.unpaid+=Number(a.balance_delta||0);
-        row.paid=row.total-row.unpaid;
-        row.adjusted=true;
-      });
-    }
-    let people=Object.values(grouped);
-    if(status==='unpaid')people=people.filter(x=>x.unpaid>0);
-    if(status==='paid')people=people.filter(x=>x.paid>0);
-    const unpaidTotal=people.reduce((s,x)=>s+x.unpaid,0);
+  const meetingHtml=Object.values(meetingGroups).map(g=>({...g,meta:gameDueSeriesMeta(g.key,g.rows)}))
+  .sort((a,b)=>b.meta.date.localeCompare(a.meta.date)||b.meta.title.localeCompare(a.meta.title,'ko')).map(g=>{
+    let visibleRows=g.rows;
+    if(status==='unpaid')visibleRows=visibleRows.filter(d=>d.status==='unpaid');
+    if(status==='paid')visibleRows=visibleRows.filter(d=>d.status==='paid');
+    if(!visibleRows.length)return '';
+    const total=g.rows.reduce((s,d)=>s+Number(d.amount||0),0);
+    const unpaidTotal=g.rows.filter(d=>d.status==='unpaid').reduce((s,d)=>s+Number(d.amount||0),0);
+    const perPerson=g.rows.length?Math.max(...g.rows.map(d=>Number(d.amount||0))):0;
     return `<div class="card" style="margin-bottom:12px">
       <div class="row" style="justify-content:space-between">
-        <div><b>${g.date} 모임</b><div style="font-size:12px;color:#6b7280;margin-top:3px">게임비 ${won(unpaidTotal)}</div></div>
-        <button class="btn blue small" onclick="shareMeetingGameDues('${g.date}')">공유</button>
+        <div><b>${g.meta.title}</b><div style="font-size:12px;color:#6b7280;margin-top:3px">${g.meta.date} · 패배팀 ${g.meta.loser} · 1인당 ${won(perPerson)} · 총 ${won(total)} · 미납 ${won(unpaidTotal)}</div></div>
+        <div class="row"><button class="btn blue small" onclick="shareSeriesGameDues('${g.key}')">단톡방 공유</button><button class="btn small" onclick="copySeriesGameDues('${g.key}')">문구 복사</button></div>
       </div>
-      <div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>회원</th><th>청구</th><th>납부</th><th>게임비 잔액</th></tr></thead><tbody>
-      ${people.sort((a,b)=>b.unpaid-a.unpaid||a.name.localeCompare(b.name,'ko')).map(x=>`<tr><td><b>${x.name}</b>${x.adjusted?'<div style="font-size:11px;color:#2563eb">수동 조정 반영</div>':''}</td><td>${won(x.total)}</td><td class="money-in">${won(x.paid)}</td><td class="${x.unpaid>0?'money-out':''}"><b>${won(x.unpaid)}</b></td></tr>`).join('')||'<tr><td colspan="4" class="empty">내역 없음</td></tr>'}
+      <div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>대상 회원</th><th>게임비</th><th>납부 상태</th></tr></thead><tbody>
+      ${visibleRows.map(d=>({d,m:members.find(x=>x.id===d.member_id)})).sort((a,b)=>(a.m?.name||'').localeCompare(b.m?.name||'','ko')).map(x=>`<tr><td><b>${x.m?.name||'-'}</b></td><td>${won(x.d.amount)}</td><td>${x.d.status==='paid'?'<span class="badge" style="background:#dcfce7;color:#166534">납부완료</span>':'<span class="badge" style="background:#fee2e2;color:#991b1b">미납</span>'}</td></tr>`).join('')}
       </tbody></table></div>
     </div>`;
   }).join('');
-  $('duesByMeeting').innerHTML=meetingHtml||'<div class="empty">해당 월의 모임별 게임비 내역이 없습니다.</div>';
+  $('duesByMeeting').innerHTML=meetingHtml||'<div class="empty">해당 월의 시리즈별 게임비 내역이 없습니다.</div>';
 
   const grouped={};
   monthRows.forEach(d=>{
@@ -1005,6 +1012,29 @@ async function shareText(text,title='올인 족구단 게임비'){
   }
   await navigator.clipboard.writeText(text);
   toast('공유문구를 복사했습니다. 카카오톡 단톡방에 붙여넣으세요.');
+}
+function buildSeriesGameDuesShareText(key){
+  const rows=gameDues.filter(d=>gameDueSeriesKey(d)===key&&monthKey(d.due_date)===currentDuesMonth());
+  if(!rows.length)return '';
+  const meta=gameDueSeriesMeta(key,rows);
+  const total=rows.reduce((s,d)=>s+Number(d.amount||0),0);
+  const unpaid=rows.filter(d=>d.status==='unpaid').reduce((s,d)=>s+Number(d.amount||0),0);
+  const amounts=[...new Set(rows.map(d=>Number(d.amount||0)))];
+  const people=rows.map(d=>{
+    const member=members.find(m=>m.id===d.member_id);
+    return `• ${member?.name||'-'} : ${won(d.amount)} (${d.status==='paid'?'납부완료':'미납'})`;
+  }).sort((a,b)=>a.localeCompare(b,'ko')).join('\n');
+  return `⚽ 올인 족구단 시리즈별 게임비\n\n📅 ${meta.date}\n🏁 ${meta.title}\n패배팀 : ${meta.loser}\n1인당 게임비 : ${amounts.map(won).join(' / ')}\n\n[게임비 대상]\n${people}\n\n총 청구액 : ${won(total)}\n미납 합계 : ${won(unpaid)}\n입금 완료 후 총무에게 알려주세요.`;
+}
+function shareSeriesGameDues(key){
+  const text=buildSeriesGameDuesShareText(key);
+  if(!text)return toast('공유할 시리즈 게임비가 없습니다.');
+  shareText(text,'시리즈별 게임비 안내');
+}
+async function copySeriesGameDues(key){
+  const text=buildSeriesGameDuesShareText(key);
+  if(!text)return toast('복사할 시리즈 게임비가 없습니다.');
+  await navigator.clipboard.writeText(text);toast('시리즈별 게임비 문구 복사 완료');
 }
 function shareAllGameDues(){const rows=adjustedUnpaidRowsForMonth();if(!rows.length)return toast('공유할 게임비 내역이 없습니다.');shareText(buildAllDuesShareText(rows))}
 async function copyAllGameDues(){

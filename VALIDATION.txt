@@ -1,0 +1,6 @@
+PASS: all JavaScript syntax checks
+PASS: SQL dollar delimiters and trigger field guard (static checks only)
+PASS: team subscriptions, single timer, fallback refresh and app-resume refresh
+PASS: totals with reversal, current amount fill, blank input rejection, delete cancellation, escaped reasons
+PASS: local HTML asset references
+NOT RUN: live Supabase migrations, database transactions and two physical device tests

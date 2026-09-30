@@ -44,7 +44,12 @@ function operationAuthParams(){
 
 function returnToMember(){location.replace('index.html')}
 async function logout(){returnToMember()}
-async function loadAll(){
+let allinLoadQueue=Promise.resolve();
+function loadAll(){
+  const next=allinLoadQueue.then(loadAllData,loadAllData);
+  allinLoadQueue=next.catch(()=>{});return next;
+}
+async function loadAllData(){
   if(!operationMember?.id||!operationPin){
     return toast('회원 운영 세션이 만료되었습니다.');
   }
@@ -86,7 +91,26 @@ async function loadAll(){
 let rtStarted=false;
 function subscribeRealtime(){
   if(rtStarted)return;rtStarted=true;
-  sb.channel('admin-live').on('postgres_changes',{event:'*',schema:'public',table:'attendance'},()=>loadAll()).on('postgres_changes',{event:'*',schema:'public',table:'transactions'},()=>loadAll()).subscribe();
+  let busy=false,pending=false,timer;
+  const refresh=async()=>{
+    if(document.hidden)return;
+    if(busy){pending=true;return;}
+    busy=true;
+    try{do{pending=false;await loadAll();}while(pending&&!document.hidden);}
+    catch(error){console.error('ALLIN sync',error);}
+    finally{busy=false;}
+  };
+  const schedule=()=>{clearTimeout(timer);timer=setTimeout(refresh,350);};
+  let channel=sb.channel('allin-live');
+  for(const table of ['members','meetings','attendance','teams','team_members','match_series','series_sets','three_team_series','three_team_games','series_team_snapshots','game_dues','member_game_fee_adjustments','transactions','fees','fee_payments']){
+    channel=channel.on('postgres_changes',{event:'*',schema:'public',table},schedule);
+  }
+  channel.subscribe(status=>{if(status==='SUBSCRIBED')schedule();});
+  // PIN 운영 화면은 RLS로 이벤트를 받지 못할 수도 있으므로 서버를 주기적으로 다시 읽는다.
+  setInterval(refresh,10000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});
+  window.addEventListener('online',schedule);
+  window.addEventListener('focus',schedule);
 }
 function go(id){
   if(!['attendance','matchday'].includes(id))id='matchday';
@@ -527,7 +551,7 @@ async function startThreeTeamSeries(){
 function renderThreeTeamArea(m,s){
   const rows=threeGamesForSeries(s.id);
   const pending=rows.find(g=>g.score_a===null||g.score_b===null);
-  const fee=(Number(s.manual_fee_amount)||2000)*(s.reset_count>0?2:1);
+  const fee=Number(s.manual_fee_amount??2000)*(s.reset_count>0?2:1);
   const phaseLabel=s.phase==='loser_final'?'최종 패자 결정전':'우승팀 결정';
   $('seriesArea').innerHTML=`<div class="grid g4">
     <div class="kpi"><div class="label">진행 회차</div><div class="value">${s.cycle_no}회차</div></div>

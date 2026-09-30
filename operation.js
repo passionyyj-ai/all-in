@@ -44,7 +44,12 @@ function operationAuthParams(){
 
 function returnToMember(){location.replace('index.html')}
 async function logout(){returnToMember()}
-async function loadAll(){
+let allinLoadQueue=Promise.resolve();
+function loadAll(){
+  const next=allinLoadQueue.then(loadAllData,loadAllData);
+  allinLoadQueue=next.catch(()=>{});return next;
+}
+async function loadAllData(){
   if(!operationMember?.id||!operationPin){
     return toast('회원 운영 세션이 만료되었습니다.');
   }
@@ -86,7 +91,26 @@ async function loadAll(){
 let rtStarted=false;
 function subscribeRealtime(){
   if(rtStarted)return;rtStarted=true;
-  sb.channel('admin-live').on('postgres_changes',{event:'*',schema:'public',table:'attendance'},()=>loadAll()).on('postgres_changes',{event:'*',schema:'public',table:'transactions'},()=>loadAll()).subscribe();
+  let busy=false,pending=false,timer;
+  const refresh=async()=>{
+    if(document.hidden)return;
+    if(busy){pending=true;return;}
+    busy=true;
+    try{do{pending=false;await loadAll();}while(pending&&!document.hidden);}
+    catch(error){console.error('ALLIN sync',error);}
+    finally{busy=false;}
+  };
+  const schedule=()=>{clearTimeout(timer);timer=setTimeout(refresh,350);};
+  let channel=sb.channel('allin-live');
+  for(const table of ['members','meetings','attendance','teams','team_members','match_series','series_sets','three_team_series','three_team_games','series_team_snapshots','game_dues','member_game_fee_adjustments','transactions','fees','fee_payments']){
+    channel=channel.on('postgres_changes',{event:'*',schema:'public',table},schedule);
+  }
+  channel.subscribe(status=>{if(status==='SUBSCRIBED')schedule();});
+  // PIN 운영 화면은 RLS로 이벤트를 받지 못할 수도 있으므로 서버를 주기적으로 다시 읽는다.
+  setInterval(refresh,10000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});
+  window.addEventListener('online',schedule);
+  window.addEventListener('focus',schedule);
 }
 function go(id){
   if(!['attendance','matchday'].includes(id))id='matchday';
@@ -490,13 +514,14 @@ function renderMatchday(){
       1경기 ${ts[0].team_name} vs ${ts[1].team_name} → 승자 vs ${ts[2].team_name} → 우승 확정 후 최종 패자 결정전<br>
       1:1:1이면 시리즈를 초기화하고 재경기합니다.</div>
       ${threeTeamFeatureReady
-        ?'<button class="btn dark" style="width:100%;margin-top:12px" onclick="startThreeTeamSeries()">3팀 단판 시리즈 시작</button>'
+        ?'<div class="field" style="margin-top:12px"><label>패배팀 1인당 게임비</label><input id="threeSeriesFee" type="number" min="0" step="1000" value="2000" inputmode="numeric"></div><button class="btn dark" style="width:100%;margin-top:12px" onclick="startThreeTeamSeries()">3팀 단판 시리즈 시작</button>'
         :'<div class="notice warning" style="margin-top:12px"><b>3팀 기능 준비 필요</b><br>Supabase에서 ALLIN_V55_Three_Team_Series_Update.sql을 실행하세요. 기존 회원·회비·모임 기능은 정상 사용 가능합니다.</div>'}`;
   }else if(ts.length>=2){
     $('seriesStartArea').innerHTML=`<div class="form-grid">
       <div class="field"><label>A팀</label><select id="seriesTeamA">${ts.map(t=>`<option value="${t.id}">${t.team_name}</option>`).join('')}</select></div>
       <div class="field"><label>B팀</label><select id="seriesTeamB">${ts.map((t,i)=>`<option value="${t.id}" ${i===1?'selected':''}>${t.team_name}</option>`).join('')}</select></div>
       <div class="field"><label>경기 방식</label><select id="seriesBestOf"><option value="3">3판 2승제</option><option value="5">5판 3승제</option></select></div>
+      <div class="field"><label>패배팀 1인당 게임비</label><input id="seriesFee" type="number" min="0" step="1000" value="2000" inputmode="numeric"></div>
     </div>
     <button class="btn dark" style="width:100%;margin-top:12px" onclick="startSeries()">시리즈 시작</button>`;
   }else{
@@ -513,16 +538,20 @@ async function startThreeTeamSeries(){
   const m=matchMeeting();
   if(!m)return toast('모임을 선택하세요.');
   const ts=teams.filter(t=>t.meeting_id===m.id);
+  const fee=Number($('threeSeriesFee')?.value);
   if(ts.length!==3)return toast('3팀 단판 시리즈는 정확히 3팀일 때만 시작할 수 있습니다.');
-  const {error}=await sb.rpc('operation_start_three_team_series',{...operationAuthParams(),p_meeting_id:m.id});
+  if(!Number.isFinite(fee)||fee<0)return toast('게임비를 확인하세요.');
+  const {data,error}=await sb.rpc('operation_start_three_team_series',{...operationAuthParams(),p_meeting_id:m.id});
   if(error)return toast(error.message);
-  toast('3팀 단판 시리즈를 시작했습니다.');
+  const {error:feeError}=await sb.rpc('operation_set_series_fee_v592',{...operationAuthParams(),p_series_kind:'three_team',p_series_id:data,p_fee_amount:fee});
+  if(feeError)return toast('시리즈 게임비 저장 실패: '+feeError.message);
+  toast(`3팀 단판 시리즈를 시작했습니다. · 1인당 ${won(fee)}`);
   await loadAll();
 }
 function renderThreeTeamArea(m,s){
   const rows=threeGamesForSeries(s.id);
   const pending=rows.find(g=>g.score_a===null||g.score_b===null);
-  const fee=(Number(s.manual_fee_amount)||2000)*(s.reset_count>0?2:1);
+  const fee=Number(s.manual_fee_amount??2000)*(s.reset_count>0?2:1);
   const phaseLabel=s.phase==='loser_final'?'최종 패자 결정전':'우승팀 결정';
   $('seriesArea').innerHTML=`<div class="grid g4">
     <div class="kpi"><div class="label">진행 회차</div><div class="value">${s.cycle_no}회차</div></div>
@@ -565,7 +594,7 @@ async function saveThreeTeamGame(){
   if(error)return toast(error.message);
   closeModal('threeTeamScoreModal');
   if(data?.completed){
-    toast(`${data.champion_name} 우승 · ${data.final_loser_name} 최종 패배 · 1인당 ${won(data.fee_amount)} 청구`);
+    const s=threeTeamSeries.find(x=>x.id===id);toast(`${data.champion_name} 우승 · ${data.final_loser_name} 최종 패배 · 1인당 ${won(s?.manual_fee_amount??data.fee_amount)} 청구`);
   }else if(data?.reset){
     toast('A·B·C팀이 1승씩 기록해 시리즈가 초기화되었습니다. 재경기를 시작합니다.');
   }else if(data?.phase==='loser_final'){
@@ -589,8 +618,10 @@ async function startSeries(){
   const teamA=$('seriesTeamA')?.value;
   const teamB=$('seriesTeamB')?.value;
   const bestOf=Number($('seriesBestOf')?.value||3);
+  const fee=Number($('seriesFee')?.value);
 
   if(!teamA||!teamB||teamA===teamB)return toast('서로 다른 두 팀을 선택하세요.');
+  if(!Number.isFinite(fee)||fee<0)return toast('게임비를 확인하세요.');
 
   const {data,error}=await sb.rpc('operation_start_match_series_v59',{
     ...operationAuthParams(),
@@ -601,7 +632,9 @@ async function startSeries(){
   });
 
   if(error)return toast(error.message);
-  toast(`${bestOf===3?'3판 2승제':'5판 3승제'} 시리즈를 시작했습니다.`);
+  const {error:feeError}=await sb.rpc('operation_set_series_fee_v592',{...operationAuthParams(),p_series_kind:'normal',p_series_id:data,p_fee_amount:fee});
+  if(feeError)return toast('시리즈 게임비 저장 실패: '+feeError.message);
+  toast(`${bestOf===3?'3판 2승제':'5판 3승제'} 시리즈를 시작했습니다. · 1인당 ${won(fee)}`);
   await loadAll();
 }
 function renderSeriesArea(m,active){
@@ -613,13 +646,28 @@ function renderSeriesArea(m,active){
     <div class="kpi"><div class="label">${active.team_a_name}</div><div class="value">${active.team_a_wins}승</div></div>
     <div class="kpi"><div class="label">${active.team_b_name}</div><div class="value">${active.team_b_wins}승</div></div>
     <div class="kpi"><div class="label">승리 조건</div><div class="value">${target}승</div></div>
-    <div class="kpi"><div class="label">다음 세트</div><div class="value">${nextNo}세트</div></div>
+    <div class="kpi"><div class="label">게임비</div><div class="value">${won(active.manual_fee_amount??2000)}</div></div>
   </div>
   <div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>세트</th><th>${active.team_a_name}</th><th>${active.team_b_name}</th><th>결과</th></tr></thead><tbody>
   ${sets.map(x=>`<tr><td>${x.set_no}세트</td><td><b>${x.score_a}</b></td><td><b>${x.score_b}</b></td><td>${x.cold_game?'<span class="badge" style="background:#fee2e2;color:#991b1b">8:0 콜드</span>':(x.winner_side==='A'?active.team_a_name:active.team_b_name)+' 승'}</td></tr>`).join('')}
   </tbody></table></div>
   <button class="btn blue" style="width:100%;margin-top:12px" onclick="openSeriesSet('${active.id}')">${nextNo}세트 점수 입력</button>
+  <button class="btn dark" style="width:100%;margin-top:8px" onclick="openDirectSeriesResult('${active.id}')">시리즈 결과 직접 입력</button>
   <button class="btn red small" style="width:100%;margin-top:8px" onclick="cancelSeries('${active.id}')">시리즈 취소</button>`;
+}
+function openDirectSeriesResult(seriesId){
+  const s=matchSeries.find(x=>x.id===seriesId);if(!s)return;
+  $('seriesResultId').value=seriesId;$('seriesResultTitle').textContent=`${s.series_no}차 시리즈 결과`;
+  $('seriesResultALabel').textContent=s.team_a_name;$('seriesResultBLabel').textContent=s.team_b_name;
+  $('seriesResultA').value='win';$('seriesResultB').value='loss';openModal('seriesResultModal');
+}
+async function saveDirectSeriesResult(){
+  const id=$('seriesResultId').value,resultA=$('seriesResultA').value,resultB=$('seriesResultB').value;
+  if((resultA==='win')===(resultB==='win'))return toast('한 팀만 승으로 선택하세요.');
+  if(!confirm('결과를 확정하고 패배팀 전원에게 게임비를 청구할까요?'))return;
+  const {data,error}=await sb.rpc('operation_complete_match_series_v593',{...operationAuthParams(),p_series_id:id,p_team_a_result:resultA,p_team_b_result:resultB});
+  if(error)return toast(error.message);closeModal('seriesResultModal');
+  toast(`${data.winner_name} 승 · ${data.loser_name} ${data.loser_result==='cold_loss'?'콜드패':'패'} · 1인당 ${won(data.fee_amount)} 청구`);await loadAll();
 }
 function openSeriesSet(seriesId){
   const s=matchSeries.find(x=>x.id===seriesId);if(!s)return;
@@ -638,7 +686,7 @@ async function saveSeriesSet(){
   const {data,error}=await sb.rpc('operation_record_series_set',{...operationAuthParams(),p_series_id:id,p_score_a:a,p_score_b:b});
   if(error)return toast(error.message);
   closeModal('seriesSetModal');
-  if(data?.completed)toast(`${data.cold_ended?'8:0 콜드패 · 시리즈 즉시 종료':'시리즈 종료'} · ${data.winner_name} 승 / 패배팀 게임비 ${won(data.fee_amount)} 청구`);
+  if(data?.completed){const s=matchSeries.find(x=>x.id===id);toast(`${data.cold_ended?'8:0 콜드패 · 시리즈 즉시 종료':'시리즈 종료'} · ${data.winner_name} 승 / 패배팀 게임비 ${won(s?.manual_fee_amount??data.fee_amount)} 청구`);}
   else toast('세트 결과 저장');
   await loadAll()
 }
@@ -655,7 +703,7 @@ function renderSeriesHistory(m){
     const sets=seriesSets.filter(x=>x.series_id===s.id).sort((a,b)=>a.set_no-b.set_no);
     return `<div style="padding:11px 0;border-bottom:1px solid #e5e7eb">
       <div><b>${s.series_no}차 · ${s.team_a_name} ${s.team_a_wins}:${s.team_b_wins} ${s.team_b_name}</b>
-      <div style="font-size:12px;color:#6b7280">${m.meeting_date} · ${s.best_of===3?'3판 2승제':'5판 3승제'} · ${s.winner_name} 승 · ${s.loser_name} 패 · ${won(s.fee_amount)} 청구 · ${sets.length}세트</div></div>${seriesSnapshotHtml('normal',s)}
+      <div style="font-size:12px;color:#6b7280">${m.meeting_date} · ${s.best_of===3?'3판 2승제':'5판 3승제'} · ${s.team_a_name} ${seriesResultLabel(s.team_a_result,s.winner_side==='A')} · ${s.team_b_name} ${seriesResultLabel(s.team_b_result,s.winner_side==='B')} · ${won(s.fee_amount)} 청구 · ${sets.length}세트</div></div>${seriesSnapshotHtml('normal',s)}
     </div>`;
   }).join('');
   const tripleHtml=triple.map(s=>`<div style="padding:11px 0;border-bottom:1px solid #e5e7eb">
@@ -664,6 +712,7 @@ function renderSeriesHistory(m){
   </div>`).join('');
   $('seriesHistory').innerHTML=(tripleHtml+normalHtml)||'<div class="empty">종료된 시리즈가 없습니다.</div>';
 }
+function seriesResultLabel(value,isWinner){return value==='cold_loss'?'콜드패':value==='loss'?'패':isWinner?'승':'패'}
 function snapshotMemberNames(ids,names=[]){return (names?.length?names:(ids||[]).map(id=>members.find(m=>m.id===id)?.name).filter(Boolean)).join(', ')||'없음'}
 function seriesSnapshotHtml(kind,s){
   let snaps=seriesTeamSnapshots.filter(x=>x.series_kind===kind&&x.series_id===s.id).sort((a,b)=>String(a.team_code).localeCompare(String(b.team_code)));

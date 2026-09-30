@@ -76,7 +76,12 @@ async function changeAdminPassword(){
   },1200);
 }
 
-async function loadAll(){
+let allinLoadQueue=Promise.resolve();
+function loadAll(){
+  const next=allinLoadQueue.then(loadAllData,loadAllData);
+  allinLoadQueue=next.catch(()=>{});return next;
+}
+async function loadAllData(){
   // 기존 운영 데이터는 3팀 확장 기능과 분리해서 먼저 읽는다.
   // 확장 테이블이 아직 없더라도 회원/모임/회비 화면은 계속 정상 표시되어야 한다.
   const coreQueries=await Promise.all([
@@ -145,7 +150,26 @@ async function loadAll(){
 let rtStarted=false;
 function subscribeRealtime(){
   if(rtStarted)return;rtStarted=true;
-  sb.channel('admin-live').on('postgres_changes',{event:'*',schema:'public',table:'attendance'},()=>loadAll()).on('postgres_changes',{event:'*',schema:'public',table:'transactions'},()=>loadAll()).subscribe();
+  let busy=false,pending=false,timer;
+  const refresh=async()=>{
+    if(document.hidden)return;
+    if(busy){pending=true;return;}
+    busy=true;
+    try{do{pending=false;await loadAll();}while(pending&&!document.hidden);}
+    catch(error){console.error('ALLIN sync',error);}
+    finally{busy=false;}
+  };
+  const schedule=()=>{clearTimeout(timer);timer=setTimeout(refresh,350);};
+  let channel=sb.channel('allin-live');
+  for(const table of ['members','meetings','attendance','teams','team_members','match_series','series_sets','three_team_series','three_team_games','series_team_snapshots','game_dues','member_game_fee_adjustments','transactions','fees','fee_payments']){
+    channel=channel.on('postgres_changes',{event:'*',schema:'public',table},schedule);
+  }
+  channel.subscribe(status=>{if(status==='SUBSCRIBED')schedule();});
+  // PIN 운영 화면은 RLS로 이벤트를 받지 못할 수도 있으므로 서버를 주기적으로 다시 읽는다.
+  setInterval(refresh,10000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});
+  window.addEventListener('online',schedule);
+  window.addEventListener('focus',schedule);
 }
 function go(id){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));document.querySelectorAll('.nav').forEach(v=>v.classList.toggle('active',v.dataset.view===id));renderAll();scrollTo({top:0,behavior:'smooth'})}
 function renderAll(){renderSelects();renderDashboard();renderMembers();renderFinance();renderAttendance();renderGames();renderMatchday();renderReceivables();renderSystemManagement()}
@@ -541,13 +565,14 @@ function renderMatchday(){
       1경기 ${ts[0].team_name} vs ${ts[1].team_name} → 승자 vs ${ts[2].team_name} → 우승 확정 후 최종 패자 결정전<br>
       1:1:1이면 시리즈를 초기화하고 재경기합니다.</div>
       ${threeTeamFeatureReady
-        ?'<button class="btn dark" style="width:100%;margin-top:12px" onclick="startThreeTeamSeries()">3팀 단판 시리즈 시작</button>'
+        ?'<div class="field" style="margin-top:12px"><label>패배팀 1인당 게임비</label><input id="threeSeriesFee" type="number" min="0" step="1000" value="2000" inputmode="numeric"></div><button class="btn dark" style="width:100%;margin-top:12px" onclick="startThreeTeamSeries()">3팀 단판 시리즈 시작</button>'
         :'<div class="notice warning" style="margin-top:12px"><b>3팀 기능 준비 필요</b><br>Supabase에서 ALLIN_V55_Three_Team_Series_Update.sql을 실행하세요. 기존 회원·회비·모임 기능은 정상 사용 가능합니다.</div>'}`;
   }else if(ts.length>=2){
     $('seriesStartArea').innerHTML=`<div class="form-grid">
       <div class="field"><label>A팀</label><select id="seriesTeamA">${ts.map(t=>`<option value="${t.id}">${t.team_name}</option>`).join('')}</select></div>
       <div class="field"><label>B팀</label><select id="seriesTeamB">${ts.map((t,i)=>`<option value="${t.id}" ${i===1?'selected':''}>${t.team_name}</option>`).join('')}</select></div>
       <div class="field"><label>경기 방식</label><select id="seriesBestOf"><option value="3">3판 2승제</option><option value="5">5판 3승제</option></select></div>
+      <div class="field"><label>패배팀 1인당 게임비</label><input id="seriesFee" type="number" min="0" step="1000" value="2000" inputmode="numeric"></div>
     </div>
     <button class="btn dark" style="width:100%;margin-top:12px" onclick="startSeries()">시리즈 시작</button>`;
   }else{
@@ -564,16 +589,20 @@ async function startThreeTeamSeries(){
   const m=matchMeeting();
   if(!m)return toast('모임을 선택하세요.');
   const ts=teams.filter(t=>t.meeting_id===m.id);
+  const fee=Number($('threeSeriesFee')?.value);
   if(ts.length!==3)return toast('3팀 단판 시리즈는 정확히 3팀일 때만 시작할 수 있습니다.');
-  const {error}=await sb.rpc('admin_start_three_team_series',{p_meeting_id:m.id});
+  if(!Number.isFinite(fee)||fee<0)return toast('게임비를 확인하세요.');
+  const {data,error}=await sb.rpc('admin_start_three_team_series',{p_meeting_id:m.id});
   if(error)return toast(error.message);
-  toast('3팀 단판 시리즈를 시작했습니다.');
+  const {error:feeError}=await sb.rpc('admin_set_series_fee_v592',{p_series_kind:'three_team',p_series_id:data,p_fee_amount:fee});
+  if(feeError)return toast('시리즈 게임비 저장 실패: '+feeError.message);
+  toast(`3팀 단판 시리즈를 시작했습니다. · 1인당 ${won(fee)}`);
   await loadAll();
 }
 function renderThreeTeamArea(m,s){
   const rows=threeGamesForSeries(s.id);
   const pending=rows.find(g=>g.score_a===null||g.score_b===null);
-  const fee=(Number(s.manual_fee_amount)||2000)*(s.reset_count>0?2:1);
+  const fee=Number(s.manual_fee_amount??2000)*(s.reset_count>0?2:1);
   const phaseLabel=s.phase==='loser_final'?'최종 패자 결정전':'우승팀 결정';
   $('seriesArea').innerHTML=`<div class="grid g4">
     <div class="kpi"><div class="label">진행 회차</div><div class="value">${s.cycle_no}회차</div></div>
@@ -616,7 +645,7 @@ async function saveThreeTeamGame(){
   if(error)return toast(error.message);
   closeModal('threeTeamScoreModal');
   if(data?.completed){
-    toast(`${data.champion_name} 우승 · ${data.final_loser_name} 최종 패배 · 1인당 ${won(data.fee_amount)} 청구`);
+    const s=threeTeamSeries.find(x=>x.id===id);toast(`${data.champion_name} 우승 · ${data.final_loser_name} 최종 패배 · 1인당 ${won(s?.manual_fee_amount??data.fee_amount)} 청구`);
   }else if(data?.reset){
     toast('A·B·C팀이 1승씩 기록해 시리즈가 초기화되었습니다. 재경기를 시작합니다.');
   }else if(data?.phase==='loser_final'){
@@ -640,8 +669,10 @@ async function startSeries(){
   const teamA=$('seriesTeamA')?.value;
   const teamB=$('seriesTeamB')?.value;
   const bestOf=Number($('seriesBestOf')?.value||3);
+  const fee=Number($('seriesFee')?.value);
 
   if(!teamA||!teamB||teamA===teamB)return toast('서로 다른 두 팀을 선택하세요.');
+  if(!Number.isFinite(fee)||fee<0)return toast('게임비를 확인하세요.');
 
   const {data,error}=await sb.rpc('admin_start_match_series_v59',{
     p_meeting_id:m.id,
@@ -651,7 +682,9 @@ async function startSeries(){
   });
 
   if(error)return toast(error.message);
-  toast(`${bestOf===3?'3판 2승제':'5판 3승제'} 시리즈를 시작했습니다.`);
+  const {error:feeError}=await sb.rpc('admin_set_series_fee_v592',{p_series_kind:'normal',p_series_id:data,p_fee_amount:fee});
+  if(feeError)return toast('시리즈 게임비 저장 실패: '+feeError.message);
+  toast(`${bestOf===3?'3판 2승제':'5판 3승제'} 시리즈를 시작했습니다. · 1인당 ${won(fee)}`);
   await loadAll();
 }
 function renderSeriesArea(m,active){
@@ -663,13 +696,28 @@ function renderSeriesArea(m,active){
     <div class="kpi"><div class="label">${active.team_a_name}</div><div class="value">${active.team_a_wins}승</div></div>
     <div class="kpi"><div class="label">${active.team_b_name}</div><div class="value">${active.team_b_wins}승</div></div>
     <div class="kpi"><div class="label">승리 조건</div><div class="value">${target}승</div></div>
-    <div class="kpi"><div class="label">다음 세트</div><div class="value">${nextNo}세트</div></div>
+    <div class="kpi"><div class="label">게임비</div><div class="value">${won(active.manual_fee_amount??2000)}</div></div>
   </div>
   <div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>세트</th><th>${active.team_a_name}</th><th>${active.team_b_name}</th><th>결과</th></tr></thead><tbody>
   ${sets.map(x=>`<tr><td>${x.set_no}세트</td><td><b>${x.score_a}</b></td><td><b>${x.score_b}</b></td><td>${x.cold_game?'<span class="badge" style="background:#fee2e2;color:#991b1b">8:0 콜드</span>':(x.winner_side==='A'?active.team_a_name:active.team_b_name)+' 승'}</td></tr>`).join('')}
   </tbody></table></div>
   <button class="btn blue" style="width:100%;margin-top:12px" onclick="openSeriesSet('${active.id}')">${nextNo}세트 점수 입력</button>
+  <button class="btn dark" style="width:100%;margin-top:8px" onclick="openDirectSeriesResult('${active.id}')">시리즈 결과 직접 입력</button>
   <button class="btn red small" style="width:100%;margin-top:8px" onclick="cancelSeries('${active.id}')">시리즈 취소</button>`;
+}
+function openDirectSeriesResult(seriesId){
+  const s=matchSeries.find(x=>x.id===seriesId);if(!s)return;
+  $('seriesResultId').value=seriesId;$('seriesResultTitle').textContent=`${s.series_no}차 시리즈 결과`;
+  $('seriesResultALabel').textContent=s.team_a_name;$('seriesResultBLabel').textContent=s.team_b_name;
+  $('seriesResultA').value='win';$('seriesResultB').value='loss';openModal('seriesResultModal');
+}
+async function saveDirectSeriesResult(){
+  const id=$('seriesResultId').value,resultA=$('seriesResultA').value,resultB=$('seriesResultB').value;
+  if((resultA==='win')===(resultB==='win'))return toast('한 팀만 승으로 선택하세요.');
+  if(!confirm('결과를 확정하고 패배팀 전원에게 게임비를 청구할까요?'))return;
+  const {data,error}=await sb.rpc('admin_complete_match_series_v593',{p_series_id:id,p_team_a_result:resultA,p_team_b_result:resultB});
+  if(error)return toast(error.message);closeModal('seriesResultModal');
+  toast(`${data.winner_name} 승 · ${data.loser_name} ${data.loser_result==='cold_loss'?'콜드패':'패'} · 1인당 ${won(data.fee_amount)} 청구`);await loadAll();
 }
 function openSeriesSet(seriesId){
   const s=matchSeries.find(x=>x.id===seriesId);if(!s)return;
@@ -688,7 +736,7 @@ async function saveSeriesSet(){
   const {data,error}=await sb.rpc('admin_record_series_set',{p_series_id:id,p_score_a:a,p_score_b:b});
   if(error)return toast(error.message);
   closeModal('seriesSetModal');
-  if(data?.completed)toast(`${data.cold_ended?'8:0 콜드패 · 시리즈 즉시 종료':'시리즈 종료'} · ${data.winner_name} 승 / 패배팀 게임비 ${won(data.fee_amount)} 청구`);
+  if(data?.completed){const s=matchSeries.find(x=>x.id===id);toast(`${data.cold_ended?'8:0 콜드패 · 시리즈 즉시 종료':'시리즈 종료'} · ${data.winner_name} 승 / 패배팀 게임비 ${won(s?.manual_fee_amount??data.fee_amount)} 청구`);}
   else toast('세트 결과 저장');
   await loadAll()
 }
@@ -705,7 +753,7 @@ function renderSeriesHistory(m){
     const sets=seriesSets.filter(x=>x.series_id===s.id).sort((a,b)=>a.set_no-b.set_no);
     return `<div style="padding:11px 0;border-bottom:1px solid #e5e7eb">
       <div><b>${s.series_no}차 · ${s.team_a_name} ${s.team_a_wins}:${s.team_b_wins} ${s.team_b_name}</b>
-      <div style="font-size:12px;color:#6b7280">${m.meeting_date} · ${s.best_of===3?'3판 2승제':'5판 3승제'} · ${s.winner_name} 승 · ${s.loser_name} 패 · ${won(s.fee_amount)} 청구 · ${sets.length}세트</div></div>
+      <div style="font-size:12px;color:#6b7280">${m.meeting_date} · ${s.best_of===3?'3판 2승제':'5판 3승제'} · ${s.team_a_name} ${seriesResultLabel(s.team_a_result,s.winner_side==='A')} · ${s.team_b_name} ${seriesResultLabel(s.team_b_result,s.winner_side==='B')} · ${won(s.fee_amount)} 청구 · ${sets.length}세트</div></div>
       ${seriesSnapshotHtml('normal',s)}
     </div>`;
   }).join('');
@@ -716,6 +764,7 @@ function renderSeriesHistory(m){
   </div>`).join('');
   $('seriesHistory').innerHTML=(tripleHtml+normalHtml)||'<div class="empty">종료된 시리즈가 없습니다.</div>';
 }
+function seriesResultLabel(value,isWinner){return value==='cold_loss'?'콜드패':value==='loss'?'패':isWinner?'승':'패'}
 function snapshotMemberNames(ids,names=[]){return (names?.length?names:(ids||[]).map(id=>members.find(m=>m.id===id)?.name).filter(Boolean)).join(', ')||'없음'}
 function seriesSnapshotHtml(kind,s){
   let snaps=seriesTeamSnapshots.filter(x=>x.series_kind===kind&&x.series_id===s.id).sort((a,b)=>String(a.team_code).localeCompare(String(b.team_code)));
@@ -740,10 +789,24 @@ function gameDueSeriesKey(d){
 }
 function gameDueSeriesMeta(key,rows=[]){
   const [kind,id]=String(key).split(':');
-  const first=rows[0]||{},meeting=meetings.find(m=>m.id===first.meeting_id),date=meeting?.meeting_date||first.due_date||'-';
-  if(kind==='S'){const s=matchSeries.find(x=>x.id===id),loser=s?.winner_side==='A'?s?.team_b_name:s?.winner_side==='B'?s?.team_a_name:s?.team_a_result==='win'?s?.team_b_name:s?.team_b_result==='win'?s?.team_a_name:'패배팀';return {date,title:`${s?.series_no||'-'}차 시리즈 · ${s?.team_a_name||'A팀'} vs ${s?.team_b_name||'B팀'}`,loser,kind:'2팀 시리즈'};}
-  if(kind==='T'){const s=threeTeamSeries.find(x=>x.id===id);return {date,title:`${s?.series_no||'-'}차 3팀 단판 시리즈`,loser:s?.final_loser_name||'최종 패배팀',kind:'3팀 시리즈'};}
-  if(kind==='G'){const g=games.find(x=>x.id===id),ta=teams.find(t=>t.id===g?.team_a),tb=teams.find(t=>t.id===g?.team_b),winner=teams.find(t=>t.id===g?.winner_team_id),loser=winner?.id===ta?.id?tb?.team_name:winner?.id===tb?.id?ta?.team_name:'패배팀';return {date,title:`단판 경기 · ${ta?.team_name||'A팀'} vs ${tb?.team_name||'B팀'}`,loser,kind:'단판 경기'};}
+  const first=rows[0]||{};
+  const meeting=meetings.find(m=>m.id===first.meeting_id);
+  const date=meeting?.meeting_date||first.due_date||'-';
+  if(kind==='S'){
+    const s=matchSeries.find(x=>x.id===id);
+    const loser=s?.winner_side==='A'?s?.team_b_name:s?.winner_side==='B'?s?.team_a_name:
+      s?.team_a_result==='win'?s?.team_b_name:s?.team_b_result==='win'?s?.team_a_name:'패배팀';
+    return {date,title:`${s?.series_no||'-'}차 시리즈 · ${s?.team_a_name||'A팀'} vs ${s?.team_b_name||'B팀'}`,loser,kind:'2팀 시리즈'};
+  }
+  if(kind==='T'){
+    const s=threeTeamSeries.find(x=>x.id===id);
+    return {date,title:`${s?.series_no||'-'}차 3팀 단판 시리즈`,loser:s?.final_loser_name||'최종 패배팀',kind:'3팀 시리즈'};
+  }
+  if(kind==='G'){
+    const g=games.find(x=>x.id===id),ta=teams.find(t=>t.id===g?.team_a),tb=teams.find(t=>t.id===g?.team_b),winner=teams.find(t=>t.id===g?.winner_team_id);
+    const loser=winner?.id===ta?.id?tb?.team_name:winner?.id===tb?.id?ta?.team_name:'패배팀';
+    return {date,title:`단판 경기 · ${ta?.team_name||'A팀'} vs ${tb?.team_name||'B팀'}`,loser,kind:'단판 경기'};
+  }
   return {date,title:'게임비 수동/이전 기록',loser:'대상 회원',kind:'기타'};
 }
 function renderReceivables(){
@@ -759,9 +822,15 @@ function renderReceivables(){
     meetingGroups[key].rows.push(d);
   });
   const monthAdjustments=gameFeeAdjustments.filter(a=>String(a.adjustment_month).slice(0,7)===month);
-  const meetingHtml=Object.values(meetingGroups).map(g=>({...g,meta:gameDueSeriesMeta(g.key,g.rows)})).sort((a,b)=>b.meta.date.localeCompare(a.meta.date)||b.meta.title.localeCompare(a.meta.title,'ko')).map(g=>{
-    let visibleRows=g.rows;if(status==='unpaid')visibleRows=visibleRows.filter(d=>d.status==='unpaid');if(status==='paid')visibleRows=visibleRows.filter(d=>d.status==='paid');if(!visibleRows.length)return '';
-    const total=g.rows.reduce((s,d)=>s+Number(d.amount||0),0),unpaidTotal=g.rows.filter(d=>d.status==='unpaid').reduce((s,d)=>s+Number(d.amount||0),0),perPerson=g.rows.length?Math.max(...g.rows.map(d=>Number(d.amount||0))):0;
+  const meetingHtml=Object.values(meetingGroups).map(g=>({...g,meta:gameDueSeriesMeta(g.key,g.rows)}))
+  .sort((a,b)=>b.meta.date.localeCompare(a.meta.date)||b.meta.title.localeCompare(a.meta.title,'ko')).map(g=>{
+    let visibleRows=g.rows;
+    if(status==='unpaid')visibleRows=visibleRows.filter(d=>d.status==='unpaid');
+    if(status==='paid')visibleRows=visibleRows.filter(d=>d.status==='paid');
+    if(!visibleRows.length)return '';
+    const total=g.rows.reduce((s,d)=>s+Number(d.amount||0),0);
+    const unpaidTotal=g.rows.filter(d=>d.status==='unpaid').reduce((s,d)=>s+Number(d.amount||0),0);
+    const perPerson=g.rows.length?Math.max(...g.rows.map(d=>Number(d.amount||0))):0;
     return `<div class="card" style="margin-bottom:12px">
       <div class="row" style="justify-content:space-between">
         <div><b>${g.meta.title}</b><div style="font-size:12px;color:#6b7280;margin-top:3px">${g.meta.date} · 패배팀 ${g.meta.loser} · 1인당 ${won(perPerson)} · 총 ${won(total)} · 미납 ${won(unpaidTotal)}</div></div>
@@ -822,7 +891,9 @@ function memberGameFeeTotals(memberId,month){
     balance:automaticBalance+adjustments.reduce((s,a)=>s+Number(a.balance_delta||0),0)
   };
 }
-function openGameFeeAdjustment(memberId,month=currentDuesMonth()){
+async function openGameFeeAdjustment(memberId,month=currentDuesMonth()){
+  await loadAll();
+  window.allinAdjustmentMonth=month;
   const member=members.find(m=>m.id===memberId),totals=memberGameFeeTotals(memberId,month);
   $('gameFeeAdjustMemberId').value=memberId;
   $('gameFeeAdjustMemberLabel').value=`${member?.name||'-'} · ${month}`;
@@ -832,10 +903,11 @@ function openGameFeeAdjustment(memberId,month=currentDuesMonth()){
   openModal('gameFeeAdjustModal');
 }
 async function saveGameFeeAdjustment(){
-  const memberId=$('gameFeeAdjustMemberId').value,month=currentDuesMonth();
+  const memberId=$('gameFeeAdjustMemberId').value,month=window.allinAdjustmentMonth||currentDuesMonth();
   const charge=Number($('gameFeeAdjustCharge').value),balance=Number($('gameFeeAdjustBalance').value);
   const reason=$('gameFeeAdjustReason').value.trim();
-  if(!Number.isFinite(charge)||!Number.isFinite(balance)||charge<0||balance<0||balance>charge)return toast('청구액과 잔액을 확인하세요.');
+  if(!$('gameFeeAdjustCharge').value.trim()||!$('gameFeeAdjustBalance').value.trim())return toast('청구액과 잔액을 입력하세요.');
+  if(!Number.isInteger(charge)||!Number.isInteger(balance)||!Number.isFinite(charge)||!Number.isFinite(balance)||charge<0||balance<0||balance>charge)return toast('청구액과 잔액을 확인하세요.');
   if(reason.length<2)return toast('변경 사유를 입력하세요.');
   const {error}=await sb.rpc('admin_adjust_member_game_fee_v591',{p_member_id:memberId,p_month:month+'-01',p_new_charge:charge,p_new_balance:balance,p_reason:reason});
   if(error)return toast('게임비 수정 실패: '+error.message);
@@ -845,7 +917,7 @@ function openGameFeeHistory(memberId){
   const member=members.find(m=>m.id===memberId);
   const rows=gameFeeAdjustments.filter(a=>a.member_id===memberId);
   $('gameFeeHistoryTitle').textContent=`${member?.name||'회원'} · 게임비 수정 이력`;
-  $('gameFeeHistoryBody').innerHTML=rows.map(a=>`<div style="padding:11px 0;border-bottom:1px solid #e5e7eb"><b>${String(a.adjustment_month).slice(0,7)} · ${a.reason}</b><div style="font-size:12px;color:#6b7280;margin-top:4px">청구 ${won(a.charge_before)} → ${won(a.charge_after)} · 잔액 ${won(a.balance_before)} → ${won(a.balance_after)}<br>${new Date(a.created_at).toLocaleString('ko-KR')}</div></div>`).join('')||'<div class="empty">수정 이력이 없습니다.</div>';
+  $('gameFeeHistoryBody').innerHTML=rows.map(a=>`<div style="padding:11px 0;border-bottom:1px solid #e5e7eb"><b>${String(a.adjustment_month).slice(0,7)} · ${escapeFeeText(a.reason)}</b><div style="font-size:12px;color:#6b7280;margin-top:4px">청구 ${won(a.charge_before)} → ${won(a.charge_after)} · 잔액 ${won(a.balance_before)} → ${won(a.balance_after)}<br>${new Date(a.created_at).toLocaleString('ko-KR')} · 수정자 ${escapeFeeText(a.changed_by||'-')}${a.deleted_at?`<br>삭제: ${new Date(a.deleted_at).toLocaleString('ko-KR')} · ${escapeFeeText(a.deleted_by||'-')}`:''}</div>${!a.deleted_at&&!a.reversal_of&&a.reason!=='게임비 합계 입금 확인'?`<button class="btn red small" onclick="deleteGameFeeAdjustment('${a.id}','${memberId}')">삭제</button>`:''}</div>`).join('')||'<div class="empty">수정 이력이 없습니다.</div>';
   openModal('gameFeeHistoryModal');
 }
 async function markMemberDuesPaid(memberId,month){
@@ -971,12 +1043,26 @@ async function shareText(text,title='올인 족구단 게임비'){
 function buildSeriesGameDuesShareText(key){
   const rows=gameDues.filter(d=>gameDueSeriesKey(d)===key&&monthKey(d.due_date)===currentDuesMonth());
   if(!rows.length)return '';
-  const meta=gameDueSeriesMeta(key,rows),total=rows.reduce((s,d)=>s+Number(d.amount||0),0),unpaid=rows.filter(d=>d.status==='unpaid').reduce((s,d)=>s+Number(d.amount||0),0),amounts=[...new Set(rows.map(d=>Number(d.amount||0)))];
-  const people=rows.map(d=>{const member=members.find(m=>m.id===d.member_id);return `• ${member?.name||'-'} : ${won(d.amount)} (${d.status==='paid'?'납부완료':'미납'})`;}).sort((a,b)=>a.localeCompare(b,'ko')).join('\n');
+  const meta=gameDueSeriesMeta(key,rows);
+  const total=rows.reduce((s,d)=>s+Number(d.amount||0),0);
+  const unpaid=rows.filter(d=>d.status==='unpaid').reduce((s,d)=>s+Number(d.amount||0),0);
+  const amounts=[...new Set(rows.map(d=>Number(d.amount||0)))];
+  const people=rows.map(d=>{
+    const member=members.find(m=>m.id===d.member_id);
+    return `• ${member?.name||'-'} : ${won(d.amount)} (${d.status==='paid'?'납부완료':'미납'})`;
+  }).sort((a,b)=>a.localeCompare(b,'ko')).join('\n');
   return `⚽ 올인 족구단 시리즈별 게임비\n\n📅 ${meta.date}\n🏁 ${meta.title}\n패배팀 : ${meta.loser}\n1인당 게임비 : ${amounts.map(won).join(' / ')}\n\n[게임비 대상]\n${people}\n\n총 청구액 : ${won(total)}\n미납 합계 : ${won(unpaid)}\n입금 완료 후 총무에게 알려주세요.`;
 }
-function shareSeriesGameDues(key){const text=buildSeriesGameDuesShareText(key);if(!text)return toast('공유할 시리즈 게임비가 없습니다.');shareText(text,'시리즈별 게임비 안내');}
-async function copySeriesGameDues(key){const text=buildSeriesGameDuesShareText(key);if(!text)return toast('복사할 시리즈 게임비가 없습니다.');await navigator.clipboard.writeText(text);toast('시리즈별 게임비 문구 복사 완료');}
+function shareSeriesGameDues(key){
+  const text=buildSeriesGameDuesShareText(key);
+  if(!text)return toast('공유할 시리즈 게임비가 없습니다.');
+  shareText(text,'시리즈별 게임비 안내');
+}
+async function copySeriesGameDues(key){
+  const text=buildSeriesGameDuesShareText(key);
+  if(!text)return toast('복사할 시리즈 게임비가 없습니다.');
+  await navigator.clipboard.writeText(text);toast('시리즈별 게임비 문구 복사 완료');
+}
 function shareAllGameDues(){const rows=adjustedUnpaidRowsForMonth();if(!rows.length)return toast('공유할 게임비 내역이 없습니다.');shareText(buildAllDuesShareText(rows))}
 async function copyAllGameDues(){
   const rows=adjustedUnpaidRowsForMonth();if(!rows.length)return toast('복사할 게임비 내역이 없습니다.');
@@ -990,4 +1076,12 @@ function shareMeetingGameDues(date){
 function shareMemberGameDues(memberId){
   const text=buildMemberDuesShareText(memberId);
   shareText(text,'개인 게임비 안내');
+}
+
+function escapeFeeText(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function deleteGameFeeAdjustment(id,memberId){
+ if(!confirm('이 게임비 수정 내역을 삭제할까요? 해당 조정 차액을 취소하며 삭제 이력은 보존됩니다.'))return;
+ const {error}=await sb.rpc('admin_delete_game_fee_adjustment_v591',{p_adjustment_id:id});
+ if(error)return toast('삭제 실패: '+error.message);
+ await loadAll();openGameFeeHistory(memberId);toast('수정 내역을 삭제했습니다.');
 }

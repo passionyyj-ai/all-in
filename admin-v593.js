@@ -76,7 +76,12 @@ async function changeAdminPassword(){
   },1200);
 }
 
-async function loadAll(){
+let allinLoadQueue=Promise.resolve();
+function loadAll(){
+  const next=allinLoadQueue.then(loadAllData,loadAllData);
+  allinLoadQueue=next.catch(()=>{});return next;
+}
+async function loadAllData(){
   // 기존 운영 데이터는 3팀 확장 기능과 분리해서 먼저 읽는다.
   // 확장 테이블이 아직 없더라도 회원/모임/회비 화면은 계속 정상 표시되어야 한다.
   const coreQueries=await Promise.all([
@@ -145,7 +150,26 @@ async function loadAll(){
 let rtStarted=false;
 function subscribeRealtime(){
   if(rtStarted)return;rtStarted=true;
-  sb.channel('admin-live').on('postgres_changes',{event:'*',schema:'public',table:'attendance'},()=>loadAll()).on('postgres_changes',{event:'*',schema:'public',table:'transactions'},()=>loadAll()).subscribe();
+  let busy=false,pending=false,timer;
+  const refresh=async()=>{
+    if(document.hidden)return;
+    if(busy){pending=true;return;}
+    busy=true;
+    try{do{pending=false;await loadAll();}while(pending&&!document.hidden);}
+    catch(error){console.error('ALLIN sync',error);}
+    finally{busy=false;}
+  };
+  const schedule=()=>{clearTimeout(timer);timer=setTimeout(refresh,350);};
+  let channel=sb.channel('allin-live');
+  for(const table of ['members','meetings','attendance','teams','team_members','match_series','series_sets','three_team_series','three_team_games','series_team_snapshots','game_dues','member_game_fee_adjustments','transactions','fees','fee_payments']){
+    channel=channel.on('postgres_changes',{event:'*',schema:'public',table},schedule);
+  }
+  channel.subscribe(status=>{if(status==='SUBSCRIBED')schedule();});
+  // PIN 운영 화면은 RLS로 이벤트를 받지 못할 수도 있으므로 서버를 주기적으로 다시 읽는다.
+  setInterval(refresh,10000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});
+  window.addEventListener('online',schedule);
+  window.addEventListener('focus',schedule);
 }
 function go(id){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));document.querySelectorAll('.nav').forEach(v=>v.classList.toggle('active',v.dataset.view===id));renderAll();scrollTo({top:0,behavior:'smooth'})}
 function renderAll(){renderSelects();renderDashboard();renderMembers();renderFinance();renderAttendance();renderGames();renderMatchday();renderReceivables();renderSystemManagement()}
@@ -578,7 +602,7 @@ async function startThreeTeamSeries(){
 function renderThreeTeamArea(m,s){
   const rows=threeGamesForSeries(s.id);
   const pending=rows.find(g=>g.score_a===null||g.score_b===null);
-  const fee=(Number(s.manual_fee_amount)||2000)*(s.reset_count>0?2:1);
+  const fee=Number(s.manual_fee_amount??2000)*(s.reset_count>0?2:1);
   const phaseLabel=s.phase==='loser_final'?'최종 패자 결정전':'우승팀 결정';
   $('seriesArea').innerHTML=`<div class="grid g4">
     <div class="kpi"><div class="label">진행 회차</div><div class="value">${s.cycle_no}회차</div></div>
@@ -867,7 +891,9 @@ function memberGameFeeTotals(memberId,month){
     balance:automaticBalance+adjustments.reduce((s,a)=>s+Number(a.balance_delta||0),0)
   };
 }
-function openGameFeeAdjustment(memberId,month=currentDuesMonth()){
+async function openGameFeeAdjustment(memberId,month=currentDuesMonth()){
+  await loadAll();
+  window.allinAdjustmentMonth=month;
   const member=members.find(m=>m.id===memberId),totals=memberGameFeeTotals(memberId,month);
   $('gameFeeAdjustMemberId').value=memberId;
   $('gameFeeAdjustMemberLabel').value=`${member?.name||'-'} · ${month}`;
@@ -877,10 +903,11 @@ function openGameFeeAdjustment(memberId,month=currentDuesMonth()){
   openModal('gameFeeAdjustModal');
 }
 async function saveGameFeeAdjustment(){
-  const memberId=$('gameFeeAdjustMemberId').value,month=currentDuesMonth();
+  const memberId=$('gameFeeAdjustMemberId').value,month=window.allinAdjustmentMonth||currentDuesMonth();
   const charge=Number($('gameFeeAdjustCharge').value),balance=Number($('gameFeeAdjustBalance').value);
   const reason=$('gameFeeAdjustReason').value.trim();
-  if(!Number.isFinite(charge)||!Number.isFinite(balance)||charge<0||balance<0||balance>charge)return toast('청구액과 잔액을 확인하세요.');
+  if(!$('gameFeeAdjustCharge').value.trim()||!$('gameFeeAdjustBalance').value.trim())return toast('청구액과 잔액을 입력하세요.');
+  if(!Number.isInteger(charge)||!Number.isInteger(balance)||!Number.isFinite(charge)||!Number.isFinite(balance)||charge<0||balance<0||balance>charge)return toast('청구액과 잔액을 확인하세요.');
   if(reason.length<2)return toast('변경 사유를 입력하세요.');
   const {error}=await sb.rpc('admin_adjust_member_game_fee_v591',{p_member_id:memberId,p_month:month+'-01',p_new_charge:charge,p_new_balance:balance,p_reason:reason});
   if(error)return toast('게임비 수정 실패: '+error.message);
@@ -890,7 +917,7 @@ function openGameFeeHistory(memberId){
   const member=members.find(m=>m.id===memberId);
   const rows=gameFeeAdjustments.filter(a=>a.member_id===memberId);
   $('gameFeeHistoryTitle').textContent=`${member?.name||'회원'} · 게임비 수정 이력`;
-  $('gameFeeHistoryBody').innerHTML=rows.map(a=>`<div style="padding:11px 0;border-bottom:1px solid #e5e7eb"><b>${String(a.adjustment_month).slice(0,7)} · ${a.reason}</b><div style="font-size:12px;color:#6b7280;margin-top:4px">청구 ${won(a.charge_before)} → ${won(a.charge_after)} · 잔액 ${won(a.balance_before)} → ${won(a.balance_after)}<br>${new Date(a.created_at).toLocaleString('ko-KR')}</div></div>`).join('')||'<div class="empty">수정 이력이 없습니다.</div>';
+  $('gameFeeHistoryBody').innerHTML=rows.map(a=>`<div style="padding:11px 0;border-bottom:1px solid #e5e7eb"><b>${String(a.adjustment_month).slice(0,7)} · ${escapeFeeText(a.reason)}</b><div style="font-size:12px;color:#6b7280;margin-top:4px">청구 ${won(a.charge_before)} → ${won(a.charge_after)} · 잔액 ${won(a.balance_before)} → ${won(a.balance_after)}<br>${new Date(a.created_at).toLocaleString('ko-KR')} · 수정자 ${escapeFeeText(a.changed_by||'-')}${a.deleted_at?`<br>삭제: ${new Date(a.deleted_at).toLocaleString('ko-KR')} · ${escapeFeeText(a.deleted_by||'-')}`:''}</div>${!a.deleted_at&&!a.reversal_of&&a.reason!=='게임비 합계 입금 확인'?`<button class="btn red small" onclick="deleteGameFeeAdjustment('${a.id}','${memberId}')">삭제</button>`:''}</div>`).join('')||'<div class="empty">수정 이력이 없습니다.</div>';
   openModal('gameFeeHistoryModal');
 }
 async function markMemberDuesPaid(memberId,month){
@@ -1049,4 +1076,12 @@ function shareMeetingGameDues(date){
 function shareMemberGameDues(memberId){
   const text=buildMemberDuesShareText(memberId);
   shareText(text,'개인 게임비 안내');
+}
+
+function escapeFeeText(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function deleteGameFeeAdjustment(id,memberId){
+ if(!confirm('이 게임비 수정 내역을 삭제할까요? 해당 조정 차액을 취소하며 삭제 이력은 보존됩니다.'))return;
+ const {error}=await sb.rpc('admin_delete_game_fee_adjustment_v591',{p_adjustment_id:id});
+ if(error)return toast('삭제 실패: '+error.message);
+ await loadAll();openGameFeeHistory(memberId);toast('수정 내역을 삭제했습니다.');
 }

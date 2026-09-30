@@ -1049,7 +1049,7 @@ function buildSeriesGameDuesShareText(key){
   const amounts=[...new Set(rows.map(d=>Number(d.amount||0)))];
   const people=rows.map(d=>{
     const member=members.find(m=>m.id===d.member_id);
-    return `• ${member?.name||'-'} : ${won(d.amount)} (${d.status==='paid'?'납부완료':'미납'})`;
+    return `• ${member?.name||'-'} : ${won(d.amount)}${d.status==='paid'?' (납부완료)':''}`;
   }).sort((a,b)=>a.localeCompare(b,'ko')).join('\n');
   return `⚽ 올인 족구단 시리즈별 게임비\n\n📅 ${meta.date}\n🏁 ${meta.title}\n패배팀 : ${meta.loser}\n1인당 게임비 : ${amounts.map(won).join(' / ')}\n\n[게임비 대상]\n${people}\n\n총 청구액 : ${won(total)}\n미납 합계 : ${won(unpaid)}\n입금 완료 후 총무에게 알려주세요.`;
 }

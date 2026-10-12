@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.9.9">
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.9.10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -47,6 +47,7 @@
 <section id="attendance" class="view"><div class="title"><h2>일요일 모임 · 참석</h2><button class="btn dark small" onclick="createMeeting()">+ 다음 모임 생성</button></div><div class="card"><div class="toolbar"><select id="meetingSelect" onchange="renderAttendance()"></select><button class="btn blue small" onclick="openAttendance()">총무 직접 수정</button></div><div id="attendanceSummary"></div></div><div class="title"><h2>팀 편성</h2><span>자동 배분 후 관리자가 직접 변경</span></div><div class="card">
     <div class="row">
       <select class="team-count-select" aria-label="생성할 팀 수"><option value="">팀 수 자동</option><option value="2">2팀</option><option value="3">3팀</option><option value="4">4팀</option></select>
+<label class="row" style="gap:6px"><input class="team-include-waiting" type="checkbox" checked style="width:auto">대기자도 포함</label>
       <button class="btn dark" onclick="generateTeams('balanced',this)">포지션 균형 생성</button>
       <button class="btn blue" onclick="generateTeams('random',this)">완전 랜덤 생성</button>
     </div>
@@ -66,10 +67,11 @@
 <div class="card">
   <div class="row">
     <select class="team-count-select" aria-label="생성할 팀 수"><option value="">팀 수 자동</option><option value="2">2팀</option><option value="3">3팀</option><option value="4">4팀</option></select>
+<label class="row" style="gap:6px"><input class="team-include-waiting" type="checkbox" checked style="width:auto">대기자도 포함</label>
     <button class="btn dark" onclick="generateTeams('balanced',this)">포지션 균형 편성</button>
     <button class="btn blue" onclick="generateTeams('random',this)">완전 랜덤 편성</button>
   </div>
-  <div class="notice" style="margin-top:10px">팀 수를 자동·2팀·3팀·4팀으로 직접 정할 수 있습니다. 자동 선택은 편성 대상 16명 이상이면 4팀, 12명 이상이면 3팀입니다. 각 팀은 정확히 4명으로 편성됩니다. 2팀은 8명, 3팀은 12명, 4팀은 16명이 필요하며 초과 인원은 대기로 남습니다. 중간 이탈자는 대기로 변경한 뒤 재편성하세요. 진행 중인 시리즈가 있으면 팀 또는 대기 상태를 변경할 수 없습니다.</div>
+  <div class="notice" style="margin-top:10px">팀 수를 자동·2팀·3팀·4팀으로 직접 정할 수 있습니다. 자동 선택은 편성 대상 16명 이상이면 4팀, 12명 이상이면 3팀입니다. 각 팀은 정확히 4명으로 편성됩니다. 2팀은 8명, 3팀은 12명, 4팀은 16명이 필요하며 초과 인원은 대기로 남습니다. 기본값은 대기자까지 포함한 전체 참석자 재편성입니다. 중간 이탈자를 대기로 유지하려면 “대기자도 포함”을 해제하세요. 진행 중인 시리즈가 있으면 팀 또는 대기 상태를 변경할 수 없습니다.</div>
   <div id="matchdayTeams" style="margin-top:12px"></div>
 </div>
 
@@ -242,7 +244,7 @@
 </div></div>
 
 <div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.9"></script><script src="common.js?v=5.9.9"></script><script src="admin-v593.js?v=5.9.9"></script><script src="pwa-admin.js?v=5.9.9"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.10"></script><script src="common.js?v=5.9.10"></script><script src="admin-v593.js?v=5.9.10"></script><script src="pwa-admin.js?v=5.9.10"></script>
 
 <script id="admin-keyboard-hardfix">
 document.addEventListener('DOMContentLoaded',()=>{
@@ -261,5 +263,5 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
-<script src="pwa-enhanced.js?v=5.9.9"></script>
+<script src="pwa-enhanced.js?v=5.9.10"></script>
 </body></html>

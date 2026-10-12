@@ -1,0 +1,6 @@
+PASS: all JavaScript syntax
+PASS: SQL static defaults, optional waiting exclusion and four-member caps
+PASS: admin 16 attendees/12 assigned/4 waiting -> 16 eligible and four-team request; optional exclusions -> 12; absent member -> 15 and blocked
+PASS: operation 16 attendees/12 assigned/4 waiting -> 16 eligible and four-team request; optional exclusions -> 12; absent member -> 15 and blocked
+PASS: default inclusion option on attendance and matchday in both pages
+NOT RUN: live Supabase migration, SQL execution and physical device tests

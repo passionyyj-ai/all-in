@@ -1,0 +1,6 @@
+PASS: all JavaScript syntax
+PASS: static SQL minimum, roster cap, per-team invariant, assigned and waiting counts in both modes
+PASS: admin rejects insufficient 4/3/2-team rosters, accepts 16-member four teams, supports auto and preserves waiting exclusions
+PASS: operation rejects insufficient 4/3/2-team rosters, accepts 16-member four teams, supports auto and preserves waiting exclusions
+PASS: updated 16-member requirement and asset version in both pages
+NOT RUN: live Supabase execution, SQL roster balancing and physical device integration

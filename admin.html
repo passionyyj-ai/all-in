@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.9.8">
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 총무</title><link rel="stylesheet" href="styles.css?v=5.9.9">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -69,7 +69,7 @@
     <button class="btn dark" onclick="generateTeams('balanced',this)">포지션 균형 편성</button>
     <button class="btn blue" onclick="generateTeams('random',this)">완전 랜덤 편성</button>
   </div>
-  <div class="notice" style="margin-top:10px">팀 수를 자동·2팀·3팀·4팀으로 직접 정할 수 있습니다. 자동 선택은 편성 대상 16명 이상이면 4팀, 12명 이상이면 3팀입니다. 4팀 직접 선택은 최소 8명이 필요합니다. 중간 이탈자는 대기로 변경한 뒤 재편성하세요. 진행 중인 시리즈가 있으면 팀 또는 대기 상태를 변경할 수 없습니다.</div>
+  <div class="notice" style="margin-top:10px">팀 수를 자동·2팀·3팀·4팀으로 직접 정할 수 있습니다. 자동 선택은 편성 대상 16명 이상이면 4팀, 12명 이상이면 3팀입니다. 각 팀은 정확히 4명으로 편성됩니다. 2팀은 8명, 3팀은 12명, 4팀은 16명이 필요하며 초과 인원은 대기로 남습니다. 중간 이탈자는 대기로 변경한 뒤 재편성하세요. 진행 중인 시리즈가 있으면 팀 또는 대기 상태를 변경할 수 없습니다.</div>
   <div id="matchdayTeams" style="margin-top:12px"></div>
 </div>
 
@@ -242,7 +242,7 @@
 </div></div>
 
 <div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.8"></script><script src="common.js?v=5.9.8"></script><script src="admin-v593.js?v=5.9.8"></script><script src="pwa-admin.js?v=5.9.8"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.9"></script><script src="common.js?v=5.9.9"></script><script src="admin-v593.js?v=5.9.9"></script><script src="pwa-admin.js?v=5.9.9"></script>
 
 <script id="admin-keyboard-hardfix">
 document.addEventListener('DOMContentLoaded',()=>{
@@ -261,5 +261,5 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
-<script src="pwa-enhanced.js?v=5.9.8"></script>
+<script src="pwa-enhanced.js?v=5.9.9"></script>
 </body></html>

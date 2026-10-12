@@ -354,10 +354,14 @@ async function generateTeams(mode='balanced',button=null){
   if(active)return toast('진행 중인 시리즈를 먼저 종료하세요.');
   const selected=button?.closest('.card')?.querySelector('.team-count-select')?.value||'';
   const teamCount=selected?Number(selected):null;
+  const available=teamGenerationEligibleCount(m.id);
+  const requiredTeams=teamCount??(available>=16?4:available>=12?3:2);
+  if(![2,3,4].includes(requiredTeams))return toast('팀 수를 확인하세요.');
+  if(available<requiredTeams*4)return toast(requiredTeams+'팀은 팀당 4명씩 총 '+requiredTeams*4+'명이 필요합니다. 현재 편성 대상은 '+available+'명입니다. 대기자는 팀에 배정한 후 재편성하세요.');
   const rpc=mode==='random'?'operation_generate_random_teams_v596':'operation_generate_balanced_teams_v596';
   const {data,error}=await sb.rpc(rpc,{...operationAuthParams(),p_meeting_id:m.id,p_team_count:teamCount});
   if(error)return toast(error.message);
-  toast(`${mode==='random'?'완전 랜덤':`포지션·실력 균형(실력합 차이 ${data?.skill_gap??0})`} 팀 ${data?.team_count||0}개 생성 · 대기 ${data?.excluded_count||0}명 유지`);
+  toast(`${mode==='random'?'완전 랜덤':`포지션·실력 균형(실력합 차이 ${data?.skill_gap??0})`} 팀 ${data?.team_count||0}개 생성 · 대기 ${data?.excluded_count||0}명 · 팀당 4명`);
   await loadAll()
 }
 function teamMemberRow(x,currentTeamId,ts,locked=false){
@@ -915,3 +919,10 @@ window.openTx=()=>toast('경기 운영 화면에서는 회비·입출금 관리�
 window.saveFeeAmount=()=>toast('경기 운영 화면에서는 회비 관리를 사용할 수 없습니다.');
 window.rolloverYear=()=>toast('경기 운영 화면에서는 연도 이월을 사용할 수 없습니다.');
 window.resetSystem=()=>toast('경기 운영 화면에서는 초기화를 사용할 수 없습니다.');
+
+function teamGenerationEligibleCount(meetingId){
+  const meetingTeams=teams.filter(t=>t.meeting_id===meetingId);
+  const teamIds=new Set(meetingTeams.map(t=>t.id));
+  const assignedIds=new Set(teamMembers.filter(tm=>teamIds.has(tm.team_id)).map(tm=>tm.member_id));
+  return attendance.filter(a=>a.meeting_id===meetingId&&a.attending===true&&(!meetingTeams.length||assignedIds.has(a.member_id))).length;
+}

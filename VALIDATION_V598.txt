@@ -1,0 +1,7 @@
+PASS: syntax of all JavaScript files
+PASS: migration statically includes four-team validation, automatic threshold and separate non-playing team snapshots
+PASS: four-team selector on attendance and matchday in both pages
+PASS: admin 4-team balanced/random RPC, auto selection, four-team match UI, 2/3-team regression, active-series lock and D/WAIT history
+PASS: operation 4-team balanced/random RPC, auto selection, four-team match UI, 2/3-team regression, active-series lock and D/WAIT history
+PASS: loaded scripts match editable source scripts
+NOT RUN: live Supabase SQL execution, SQL balancing, physical device synchronization, result and fee integration

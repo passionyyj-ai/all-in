@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#111827" name="theme-color"/><title>올인 족구단 총무</title><link href="styles.css?v=5.9.7-fix2" rel="stylesheet"/>
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#111827" name="theme-color"/><title>올인 족구단 총무</title><link href="styles.css?v=5.9.8" rel="stylesheet"/>
 <meta content="#080b10" name="theme-color"/>
 <meta content="yes" name="apple-mobile-web-app-capable"/>
 <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
@@ -14,7 +14,7 @@
 
 <section class="view" id="attendance"><div class="title"><h2>일요일 모임 · 참석</h2></div><div class="card"><div class="toolbar"><select id="meetingSelect" onchange="renderAttendance()"></select><button class="btn blue small" onclick="openAttendance()">총무 직접 수정</button></div><div id="attendanceSummary"></div></div><div class="title"><h2>팀 편성</h2><span>자동 배분 후 관리자가 직접 변경</span></div><div class="card">
 <div class="row">
-<select class="team-count-select" aria-label="생성할 팀 수"><option value="">팀 수 자동</option><option value="2">2팀</option><option value="3">3팀</option></select>
+<select class="team-count-select" aria-label="생성할 팀 수"><option value="">팀 수 자동</option><option value="2">2팀</option><option value="3">3팀</option><option value="4">4팀</option></select>
 <button class="btn dark" onclick="generateTeams('balanced',this)">포지션 균형 생성</button>
 <button class="btn blue" onclick="generateTeams('random',this)">완전 랜덤 생성</button>
 </div>
@@ -31,14 +31,14 @@
 <div class="title"><h2>1. 팀 편성</h2><span id="teamGenerationStatus"></span></div>
 <div class="card">
 <div class="row">
-<select class="team-count-select" aria-label="생성할 팀 수"><option value="">팀 수 자동</option><option value="2">2팀</option><option value="3">3팀</option></select>
+<select class="team-count-select" aria-label="생성할 팀 수"><option value="">팀 수 자동</option><option value="2">2팀</option><option value="3">3팀</option><option value="4">4팀</option></select>
 <button class="btn dark" onclick="generateTeams('balanced',this)">포지션 균형 편성</button>
 <button class="btn blue" onclick="generateTeams('random',this)">완전 랜덤 편성</button>
 </div>
-<div class="notice" style="margin-top:10px">팀 수를 자동·2팀·3팀으로 직접 정할 수 있습니다. 중간 이탈자는 대기로 변경한 뒤 재편성하세요. 진행 중인 시리즈가 있으면 팀 또는 대기 상태를 변경할 수 없습니다.</div>
+<div class="notice" style="margin-top:10px">팀 수를 자동·2팀·3팀·4팀으로 직접 정할 수 있습니다. 자동 선택은 편성 대상 16명 이상이면 4팀, 12명 이상이면 3팀입니다. 4팀 직접 선택은 최소 8명이 필요합니다. 중간 이탈자는 대기로 변경한 뒤 재편성하세요. 진행 중인 시리즈가 있으면 팀 또는 대기 상태를 변경할 수 없습니다.</div>
 <div id="matchdayTeams" style="margin-top:12px"></div>
 </div>
-<div class="title"><h2>2. 시리즈 시작</h2><span>2팀: 다전제 · 3팀: 단판 승자연전</span></div>
+<div class="title"><h2>2. 시리즈 시작</h2><span>2·4팀: 두 팀 선택 다전제 · 3팀: 단판 승자연전</span></div>
 <div class="card">
 <div id="seriesStartArea"></div>
 </div>
@@ -97,7 +97,7 @@
 <button class="btn red" onclick="executeReset()" style="width:100%;margin-top:14px">정말 초기화</button>
 </div></div>
 <div class="toast" id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.7-fix2"></script><script src="common.js?v=5.9.7-fix2"></script><script src="operation-v593.js?v=5.9.7-fix2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=5.9.8"></script><script src="common.js?v=5.9.8"></script><script src="operation-v593.js?v=5.9.8"></script>
 
 <nav class="bottom operation-only-nav">
 <div class="bottom-inner operation-bottom">
@@ -106,5 +106,5 @@
 <button class="nav" onclick="returnToMember()" type="button"><b>↩</b>회원으로</button>
 </div>
 </nav>
-<script src="pwa-enhanced.js?v=5.9.7-fix2"></script>
+<script src="pwa-enhanced.js?v=5.9.8"></script>
 </body></html>

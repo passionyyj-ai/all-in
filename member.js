@@ -37,6 +37,7 @@ async function init(){
   try{const saved=JSON.parse(sessionStorage.getItem('allin_member_session')||'null');if(saved?.member&&saved?.pin){loginMember=saved.member;loginPin=saved.pin;showMemberApp();await initPortal()}}catch(e){}
 }
 async function initPortal(){
+  startGameFeeRefresh();
   if(!requireConfig()){$('configWarn').classList.remove('hidden');$('meetingDate').textContent='연결 설정 필요';return}
   await loadPortal();if(!$('memberDashMonth').value)$('memberDashMonth').value=new Date().toISOString().slice(0,7);await loadMemberDashboard();
   sb.channel('member-portal-v53').on('postgres_changes',{event:'*',schema:'public',table:'attendance'},()=>loadPortal(true)).on('postgres_changes',{event:'*',schema:'public',table:'meetings'},()=>loadPortal(true)).subscribe();
@@ -101,17 +102,18 @@ function openDelegateAdmin(){
 }
 
 async function loadMemberDashboard(){
-  if(!sb||!$('memberDashMonth'))return;
-  const month=$('memberDashMonth').value||new Date().toISOString().slice(0,7);
-  const {data,error}=await sb.rpc('get_my_member_dashboard',{p_month:month+'-01',p_member_id:loginMember?.id,p_pin:loginPin});
-  if(error){console.error(error);return toast('현황 조회 중 오류가 발생했습니다.')}
-  const d=data||{}, fee=d.fee||{}, cash=d.cash||{}, dues=d.game_dues||{};
-  $('feeDashboard').innerHTML=`<div class="grid g4">
-    <div class="kpi"><div class="label">대상 회원</div><div class="value">${fee.total||0}명</div></div>
-    <div class="kpi"><div class="label">납부</div><div class="value">${fee.paid||0}명</div></div>
-    <div class="kpi"><div class="label">미납</div><div class="value">${fee.unpaid||0}명</div></div>
-    <div class="kpi"><div class="label">납부율</div><div class="value">${fee.rate||0}%</div></div>
-  </div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>회원</th><th>상태</th><th>납부일</th></tr></thead><tbody>${(fee.members||[]).map(x=>`<tr><td><b>${x.name}</b></td><td>${x.paid?'<span class="badge" style="background:#dcfce7;color:#166534">납부</span>':'<span class="badge" style="background:#fee2e2;color:#991b1b">미납</span>'}</td><td>${x.paid_date||'-'}</td></tr>`).join('')}</tbody></table></div>`;
-  $('cashDashboard').innerHTML=`<div class="grid g4"><div class="kpi"><div class="label">당월 수입</div><div class="value">${won(cash.income||0)}</div></div><div class="kpi"><div class="label">당월 지출</div><div class="value">${won(cash.expense||0)}</div></div><div class="kpi"><div class="label">당월 증감</div><div class="value">${won((cash.income||0)-(cash.expense||0))}</div></div><div class="kpi"><div class="label">현재 잔액</div><div class="value">${won(cash.balance||0)}</div></div></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>일자</th><th>구분</th><th>항목</th><th>금액</th></tr></thead><tbody>${(cash.recent||[]).map(x=>`<tr><td>${x.date}</td><td>${x.type==='income'?'수입':'지출'}</td><td>${x.category}</td><td class="${x.type==='income'?'money-in':'money-out'}">${x.type==='income'?'+':'-'} ${won(x.amount)}</td></tr>`).join('')}</tbody></table></div>`;
-  $('gameDueDashboard').innerHTML=`<div class="grid g4"><div class="kpi"><div class="label">총 청구</div><div class="value">${won(dues.total_amount||0)}</div></div><div class="kpi"><div class="label">납부</div><div class="value">${won(dues.paid_amount||0)}</div></div><div class="kpi"><div class="label">게임비 잔액</div><div class="value">${won(dues.unpaid_amount||0)}</div></div><div class="kpi"><div class="label">게임 횟수</div><div class="value">${dues.game_count||0}경기</div></div></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>회원</th><th>총 청구</th><th>납부</th><th>게임비 잔액</th></tr></thead><tbody>${(()=>{const x=(dues.items||[]).find(v=>v.id===loginMember?.id)||(dues.items||[])[0];return x?`<tr><td><b>${x.name}</b></td><td>${won(x.total_amount||0)}</td><td class="money-in">${won(x.paid_amount||0)}</td><td class="${(x.unpaid_amount||0)>0?'money-out':''}">${won(x.unpaid_amount||0)}</td></tr>`:'<tr><td colspan="4">게임비 내역이 없습니다.</td></tr>'})()}</tbody></table></div>`;
+ if(!sb||!loginMember?.id||!$('memberDashMonth'))return;
+ const month=$('memberDashMonth').value||new Date().toISOString().slice(0,7);
+ const memberId=loginMember.id,pin=loginPin;
+ const {data,error}=await sb.rpc('member_get_game_fees_v600',{p_month:month+'-01',p_member_id:memberId,p_pin:pin});
+ if(loginMember?.id!==memberId||loginPin!==pin||($('memberDashMonth').value&&$('memberDashMonth').value!==month))return;
+ if(error){console.error(error);$('gameDueDashboard').textContent='게임비를 불러오지 못했습니다. 다시 시도하세요.';return;}
+ const d=data||{},esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ $('gameDueDashboard').innerHTML='<div class="kpi"><div class="label">게임비 합계</div><div class="value">'+won(d.total_amount)+'</div></div><div class="table-wrap"><table><thead><tr><th>일자</th><th>시리즈</th><th>게임비</th></tr></thead><tbody>'+(d.items||[]).map(x=>'<tr><td>'+esc(x.due_date)+'</td><td>'+esc(x.title)+'</td><td>'+won(x.amount)+'</td></tr>').join('')+'</tbody></table></div>'+(d.adjustment_amount?'<div class="notice">수동 조정 '+won(d.adjustment_amount)+'</div>':'')+(!(d.items||[]).length?'<div class="empty">시리즈 게임비 내역이 없습니다.</div>':'');
+}
+let gameFeeRefreshStarted=false;
+function startGameFeeRefresh(){
+ if(gameFeeRefreshStarted)return;gameFeeRefreshStarted=true;
+ const refresh=()=>{if(loginMember&&!document.hidden)loadMemberDashboard().catch(console.error);};
+ setInterval(refresh,15000);document.addEventListener('visibilitychange',refresh);window.addEventListener('online',refresh);
 }

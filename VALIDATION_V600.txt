@@ -1,0 +1,7 @@
+PASS: JavaScript syntax of every source
+PASS: removed feature text and static SQL authorization, scoping, soft deletion, audit and preserved records
+PASS: actual admin renderAll, mixed legacy statuses, hidden deleted rows, total and status-free sharing
+PASS: delete cancellation, correct series RPC, post-delete total/share refresh and preserved matches (mock RPC)
+PASS: charge-only adjustment required amount, reason and correct RPC
+PASS: actual private member fee dashboard rendering without membership or payment states
+NOT RUN: live Supabase migration, DB triggers/concurrency and physical device integration

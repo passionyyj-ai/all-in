@@ -461,13 +461,8 @@ function renderGames(){
     <div style="font-size:12px;color:#6b7280;margin-top:3px">${g.winner_team_id?`승리 ${teamName(g.winner_team_id)}`:'결과 미입력'}</div></div>
     <div class="row"><button class="btn blue small" onclick="openScore('${g.id}')">결과 입력</button>${g.winner_team_id?`<button class="btn small" onclick="clearGameResult('${g.id}')">결과취소</button>`:''}<button class="btn red small" onclick="deleteGame('${g.id}')">삭제</button></div>
   </div>`).join('')||'<div class="empty">경기 없음</div>';
-  const dues=gameDues.filter(d=>d.meeting_id===m.id),paid=dues.filter(d=>d.status==='paid'),unpaid=dues.filter(d=>d.status==='unpaid');
-  $('gameFeeSummary').innerHTML=dues.length?`<div class="grid g4">
-    <div class="kpi"><div class="label">총 청구</div><div class="value">${won(dues.reduce((s,d)=>s+Number(d.amount),0))}</div></div>
-    <div class="kpi"><div class="label">게임비 잔액</div><div class="value">${won(unpaid.reduce((s,d)=>s+Number(d.amount),0))}</div></div>
-    <div class="kpi"><div class="label">납부</div><div class="value">${won(paid.reduce((s,d)=>s+Number(d.amount),0))}</div></div>
-    <div class="kpi"><div class="label">청구 건수</div><div class="value">${dues.length}건</div></div>
-  </div>`:'<div class="empty">점수를 저장하면 일반 패배는 2,000원, 8점 차 이상 콜드게임 패배는 4,000원 청구가 생성됩니다. 실제 입금 전에는 수입에 반영되지 않습니다.</div>';
+  const dues=gameDues.filter(d=>d.meeting_id===m.id&&!d.deleted_at);
+  $('gameFeeSummary').innerHTML=dues.length?'<div class="kpi"><div class="label">게임비 합계</div><div class="value">'+won(dues.reduce((n,d)=>n+Number(d.amount),0))+'</div></div>':'<div class="empty">게임비 내역이 없습니다.</div>';
 }
 init();
 
@@ -520,7 +515,7 @@ function renderMatchday(){
       1:1:1이면 시리즈를 초기화하고 재경기합니다.</div>
       ${threeTeamFeatureReady
         ?'<div class="field" style="margin-top:12px"><label>패배팀 1인당 게임비</label><input id="threeSeriesFee" type="number" min="0" step="1000" value="2000" inputmode="numeric"></div><button class="btn dark" style="width:100%;margin-top:12px" onclick="startThreeTeamSeries()">3팀 단판 시리즈 시작</button>'
-        :'<div class="notice warning" style="margin-top:12px"><b>3팀 기능 준비 필요</b><br>Supabase에서 ALLIN_V55_Three_Team_Series_Update.sql을 실행하세요. 기존 회원·회비·모임 기능은 정상 사용 가능합니다.</div>'}`;
+        :'<div class="notice warning" style="margin-top:12px"><b>3팀 기능 준비 필요</b><br>Supabase에서 ALLIN_V55_Three_Team_Series_Update.sql을 실행하세요. 기존 회원·모임 기능은 정상 사용 가능합니다.</div>'}`;
   }else if(ts.length>=2){
     $('seriesStartArea').innerHTML=`${ts.length===4?'<div class="notice" style="margin-bottom:12px"><b>4팀 편성</b><br>경기할 두 팀을 선택하세요. 나머지 두 팀은 이번 시리즈에 참가하지 않습니다.</div>':''}<div class="form-grid">
       <div class="field"><label>A팀</label><select id="seriesTeamA">${ts.map(t=>`<option value="${t.id}">${t.team_name}</option>`).join('')}</select></div>

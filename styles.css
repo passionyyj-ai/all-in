@@ -308,3 +308,5 @@ body{
 
 .waiting-card{border-style:dashed;background:#fffbeb}
 .waiting-badge{background:#fef3c7;color:#92400e;border-color:#f59e0b}
+#receivables > .title h2{color:#f8fafc}
+#receivables > .title span{color:#cbd5e1}

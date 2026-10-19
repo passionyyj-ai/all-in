@@ -2,8 +2,24 @@ let meeting=null, members=[], loginMember=null, loginPin='';
 
 async function memberLogin(){
   const name=$('memberLoginId').value.trim();
-  const pin=$('memberLoginPw').value.trim();
-  if(!name)return showLoginError('회원 이름을 입력하세요.');
+  const password=$('memberLoginPw').value;
+  const pin=password.trim();
+  if(!name)return showLoginError('회원 이름 또는 admin을 입력하세요.');
+  if(name.toLowerCase()==='admin'){
+    if(!password)return showLoginError('관리자 비밀번호를 입력하세요.');
+    if(!requireConfig())return;
+    $('memberLoginError').textContent='';
+    try{
+      const {error}=await sb.auth.signInWithPassword({email:'admin@allin.club',password});
+      if(error)return showLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
+      const {data:admin,error:permissionError}=await sb.rpc('is_admin');
+      if(permissionError||!admin){await sb.auth.signOut();return showLoginError('관리자 권한이 없습니다.');}
+      sessionStorage.removeItem('allin_member_session');
+      $('memberLoginPw').value='';
+      location.replace('admin.html');
+    }catch(error){console.error(error);showLoginError('로그인 처리 중 오류가 발생했습니다. 다시 시도하세요.');}
+    return;
+  }
   if(!/^\d{4}$/.test(pin))return showLoginError('개인 PIN 4자리를 입력하세요.');
   if(!requireConfig())return;
   const {data,error}=await sb.rpc('member_login_v53',{p_name:name,p_pin:pin});

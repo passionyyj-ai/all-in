@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 회원</title><link rel="stylesheet" href="styles.css?v=6.0.0">
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ALLIN 회원</title><link rel="stylesheet" href="styles.css?v=6.0.1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -13,8 +13,9 @@
 </head>
 <body data-app-kind="member">
 <div id="memberLoginView" class="login-wrap"><div class="login-card">
-<div class="hero"><img class="club-logo" src="allin-logo.png" alt="ALLIN JOKGUCLUB 로고"><h1>올인 족구단</h1><div class="club-subtitle">ALLIN JOKGUCLUB · 2023</div><p>회원 로그인</p></div>
-<div class="stack"><input id="memberLoginId" autocomplete="username" placeholder="회원 이름"><input id="memberLoginPw" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="개인 4자리 PIN"><button class="btn dark" onclick="memberLogin()">로그인</button></div>
+<div class="hero"><img class="club-logo" src="allin-logo.png" alt="ALLIN JOKGUCLUB 로고"><h1>올인 족구단</h1><div class="club-subtitle">ALLIN JOKGUCLUB · 2023</div><p>회원 · 관리자 로그인</p></div>
+<div class="stack"><input id="memberLoginId" autocomplete="username" placeholder="회원 이름 또는 admin" autocapitalize="none" autocorrect="off" spellcheck="false"><input id="memberLoginPw" type="password" autocomplete="current-password" placeholder="회원 PIN 또는 관리자 비밀번호" autocapitalize="none" autocorrect="off" spellcheck="false"><button class="btn dark" onclick="memberLogin()">로그인</button></div>
+<div class="notice" style="margin-top:12px">회원은 이름과 4자리 PIN을, 관리자는 <b>admin</b>과 관리자 비밀번호를 입력하세요.</div>
 <div id="memberLoginError" style="color:#dc2626;font-size:13px;text-align:center;margin-top:10px"></div>
 </div></div>
 <div id="memberAppView" class="member-wrap hidden"><div class="member-card">
@@ -38,6 +39,6 @@
   <button type="button" class="btn dark" onclick="openDelegateAdmin()">경기 운영</button>
 </div>
 </div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=6.0.0"></script><script src="common.js?v=6.0.0"></script><script src="member.js?v=6.0.0"></script><script src="pwa-member.js?v=6.0.0"></script>
-<script src="pwa-enhanced.js?v=6.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=6.0.1"></script><script src="common.js?v=6.0.1"></script><script src="member.js?v=6.0.1"></script><script src="pwa-member.js?v=6.0.1"></script>
+<script src="pwa-enhanced.js?v=6.0.1"></script>
 </body></html>

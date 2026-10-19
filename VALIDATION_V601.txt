@@ -1,0 +1,6 @@
+PASS: JavaScript syntax
+PASS: 8 typed characters retained, admin uses Auth plus role verification and navigates to admin.html
+PASS: longer password and spaces preserved; failed admin authentication remains on login
+PASS: non-admin session rejected and signed out
+PASS: members still use a 4-digit PIN and member authentication
+NOT RUN: live Supabase authentication or physical device cache update
